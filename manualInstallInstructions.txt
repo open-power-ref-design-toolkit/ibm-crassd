@@ -1,0 +1,20 @@
+#pre-reqs
+#Python version 2.7 or newer with requests and configparser packages installed
+#java version 1.7 or newer
+#ipmitool
+
+#Install instructions
+# copy ibmpowerhwmon.service to /etc/systemd/system
+# compile the java code using the following steps
+	cd ipmiselparser/src
+	javac ipmiSelParser/*.java
+	jar cfe ipmiselparser.jar ipmiSelParser.ipmiSelParser ipmiSelParser/*.class
+#copy jar and config file to /opt/ibm/ras
+	cp ipmiselparser.jar /opt/ibm/ras/
+	cp ipmiSelParser/config.properties ../bmc-events.xml /opt/ibm/ras/
+#copy hwmonitor source
+	cd csmhwmonitor/ibmhwmonitor/
+	cp * /opt/ibm/ras/
+#copy openbmctool
+	cd csmhwmonitor/openbmctool
+	cp * /opt/ibm/ras/
