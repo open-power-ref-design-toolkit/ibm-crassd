@@ -1,0 +1,14 @@
+***ibmpowerhwmon.service***
+[Unit]
+Description=HW Monitoring service for IBM POWER LC servers
+After=multi-user.target syslog.target
+
+[Service]
+Type=simple
+ExecStart=/opt/ibm/ras/ibmpowerhwmon.py
+User=root
+WorkingDirectory=/etc/systemd/system
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
