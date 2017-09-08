@@ -8,9 +8,9 @@
 # compile the java code using the following steps
 	cd ipmiselparser/src
 	javac ipmiSelParser/*.java
-	jar cfe ipmiselparser.jar ipmiSelParser.ipmiSelParser ipmiSelParser/*.class
+	jar cfe ipmiSelParser.jar ipmiSelParser.ipmiSelParser ipmiSelParser/*.class
 #copy jar and config file to /opt/ibm/ras
-	cp ipmiselparser.jar /opt/ibm/ras/
+	cp ipmiSelParser.jar /opt/ibm/ras/
 	cp ipmiSelParser/config.properties ../bmc-events.xml /opt/ibm/ras/
 #copy hwmonitor source
 	cd csmhwmonitor/ibmhwmonitor/

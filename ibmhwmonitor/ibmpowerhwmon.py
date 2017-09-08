@@ -51,23 +51,33 @@ def OpenBMCEventHandler(openBMCEvent):
 
 def notifyCSM(cerEvent, impactedNode):
     httpHeader = {'Content-Type':'application/json'}
-    eventEntry = {'msg_id': "bmc.event." + cerEvent['CerID'], 'location_name':impactedNode}
+    msgID = "bmc." + "".join(cerEvent['eventType'].split()) + "." + cerEvent['CerID']
+    eventEntry = {'msg_id': msgID, 'location_name':impactedNode}
+    global csmDown
     try:
         r = requests.post('http://127.0.0.1:5555/csmi/V1.0/ras/event/create', headers=httpHeader, data=json.dumps(eventEntry), timeout=30)
-        loginMessage = json.loads(r.text)
-        if (loginMessage['status'] != "OK"):
-            print(loginMessage["data"]["description"].encode('utf-8')) 
-            errorHandler(syslog.LOG_ERR, "Unable to forward HW event")
+        if (r.status_code != 200):
+            print(r.raise_for_status()) 
+            errorHandler(syslog.LOG_ERR, "Unable to forward HW event to CSM: "+ msgID )
+            csmDown = True;
             return False
-        return True
+        else:
+            print("Successfully reported to CSM: " + msgID)
+            csmDown=False
+            return True
     except(requests.exceptions.Timeout):
-        errorHandler(syslog.LOG_ERR, "Connection Timed out connecting to CSM Aggregator. Ensure the service is running")
+        if csmDown == False:
+            errorHandler(syslog.LOG_ERR, "Connection Timed out connecting to CSM Aggregator. Ensure the service is running")
+            csmDown = True;
         return False
     except(requests.exceptions.ConnectionError) as err:
-        errorHandler(syslog.LOG_ERR, "Encountered an error connecting to CSM Aggregator. Ensure the service is running. Error: " + str(err))
+        if csmDown == False:
+            errorHandler(syslog.LOG_ERR, "Encountered an error connecting to CSM Aggregator. Ensure the service is running. Error: " + str(err))
+            csmDown = True;
         return False   
     
 def BMCEventProcessor():
+    eventsDict = {};
     while True:
         node = nodes2poll.get()
         name = threading.currentThread().getName()
@@ -89,21 +99,42 @@ def BMCEventProcessor():
                 #use redfish
                 time.sleep(1)
             
-            for i in range(0, len(eventsDict)-2):
+            for i in range(0, len(eventsDict)-1):
                 event = "event" +str(i)
                 if "error" in eventsDict[event]:
-                    errorHandler(syslog.LOG_ERR, "Event not found in lookup table")
+                    begIndex = eventsDict[event]['error'].rfind(":") + 2
+                    missingKey = eventsDict[event]['error'][begIndex:]
+                    if(missingKey not in missingEvents.keys()):
+                        with lock: 
+                            missingEvents[missingKey] = True
+                        errorHandler(syslog.LOG_ERR, "Event not found in lookup table: " + missingKey)
                 else:
                     #only report new events
                     if(eventsDict[event]['timestamp']>node['lastLogTime']):
-                        notifyCSM(eventsDict[event], bmcHostname)
-                        node['lastLogTime'] = eventsDict[event]['timestamp']
+                        reported = notifyCSM(eventsDict[event], bmcHostname)
+                        if reported:
+                            with lock: 
+                                node['lastLogTime'] = eventsDict[event]['timestamp']
+                                del node['dupTimeIDList'][:]
+                        else:
+                            break
+                    if(eventsDict[event]['timestamp']== node['lastLogTime']):
+                        if(eventsDict[event]['CerID'] not in node['dupTimeIDList']):
+                            reported = notifyCSM(eventsDict[event], bmcHostname)
+                            if reported:
+                                with lock: 
+                                    node['dupTimeIDList'].append(eventsDict[event]['timestamp'])
+                            else:
+                                break
+            reported = False               
             nodes2poll.task_done()
         except Exception as e:
             print(e)
         eventsDict.clear()
 
 def initialize():
+    global csmDown
+    csmDown = False
     #read the config file
     confParser = configparser.ConfigParser()
     try:
@@ -143,6 +174,8 @@ if __name__ == '__main__':
     try:
         nodes2poll = queue.Queue()
         mynodelist = []
+        missingEvents = {}
+        lock = threading.Lock()
         initialize()
 #         nodes2poll.join()
         
