@@ -18,3 +18,10 @@
 #copy openbmctool
 	cd csmhwmonitor/openbmctool
 	cp * /opt/ibm/ras/
+
+#Running the daemon in the foreground
+cd /opt/ibm/ras
+python ibmpowerhwmon.py
+
+#Running in the background with systemd
+systemctl start ibmpowerhwmon
