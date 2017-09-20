@@ -29,8 +29,7 @@ import org.w3c.dom.NodeList;
 public class BmcEventParser{
     //private static final Logger LOGGER = SFPCommonLogger.getLogger(SFPProperties.BMCLOGGER);
     
-    //private static final String EVENTSPATH = SfpResource.getBmcPath() + File.separator + "bmc-events.xml";
-    private static final String EVENTSPATH = System.getProperty("user.dir") +File.separator + "bmc-events.xml";
+    private static final String EVENTSPATH = "/ipmiselparser/bmc-events.xml";
     
     
     
@@ -58,15 +57,17 @@ public class BmcEventParser{
     private static XPath xpath;
     
     /**
-     * Construct a parser instance. EVENTSPATH will be /opt/sfp/data/service/bmc .
+     * Construct a parser instance with EVENTSPATH.
      * Whitespace will be removed for parsing simplicity
      */
     public BmcEventParser(){
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
         DocumentBuilder builder;
+	String eventFilePath = this.getClass().getClassLoader().getResource(EVENTSPATH).toExternalForm();
+ 
         try {
             builder = factory.newDocumentBuilder();
-            doc = builder.parse(EVENTSPATH);
+            doc = builder.parse(eventFilePath);
             
             XPathFactory xPathFactory = XPathFactory.newInstance();
             xpath = xPathFactory.newXPath();

@@ -1,13 +1,13 @@
 # Copyright (c) 2017 International Business Machines.  All right reserved.
-Summary: IBM POWER Hardware Monitor
-Name: csmhwmonitor
+Summary: IBM POWER LC Cluster RAS Service Package
+Name: crassd
 Version: 0.2
 Release: 1
 License: BSD
 Group: System Environment/Base
 URL: http://www.ibm.com/
 Source0: %{name}-%{version}-%{release}.tar.gz
-Prefix: /ras
+Prefix: /opt
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 
 BuildRequires: java-devel >= 1.7.0
@@ -44,11 +44,12 @@ ate including environmental, reliability, service, and failure data.
 export DESTDIR=$RPM_BUILD_ROOT/opt/ibm/ras
 mkdir -p $DESTDIR/bin
 mkdir -p $DESTDIR/etc
+mkdir -p $DESTDIR/lib
 mkdir -p $RPM_BUILD_ROOT/etc/systemd/system
 %{__make} install
 
 cp ibmhwmonitor/*.py openbmctool/*.py $DESTDIR/bin
-cp ipmiselparser/config.properties ipmiselparser/bmc-events.xml ibmhwmonitor/ibmpowerhwmon.config lookupTable.yml $DESTDIR/etc
+cp ibmhwmonitor/ibmpowerhwmon.config $DESTDIR/etc
 cp ibmhwmonitor/ibmpowerhwmon.service $RPM_BUILD_ROOT/etc/systemd/system
 
 %clean
@@ -56,13 +57,11 @@ rm -rf $RPM_BUILD_ROOT
 
 %files
 %defattr(-,root,root,-)
-/opt/ibm/ras/etc/config.properties
-/opt/ibm/ras/lib/selparser.jar
-/opt/ibm/ras/etc/lookupTable.yml
+/opt/ibm/ras/lib/crassd.jar
+#will likely put the policyTable.yml into lib...
 /opt/ibm/ras/etc/ibmpowerhwmon.config
 /opt/ibm/ras/bin/ibmpowerhwmon.py
 /opt/ibm/ras/bin/openbmctool.py
-/opt/ibm/ras/etc/bmc-events.xml
 /etc/systemd/system/ibmpowerhwmon.service
 
 %post

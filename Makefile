@@ -12,5 +12,5 @@ CLASSPATH=./classes
 default: java jar
 java: ;mkdir -p classes && $(JAVAC) -d  ./classes `find . -name *.java`
 clean: ;rm -rf ./classes ./lib
-jar: java;mkdir -p ./lib && cd classes/ && $(JAR) -cvf ../lib/selparser.jar *
-install: ;cp ./lib/* ./selparser/config.properties $(DESTDIR)
+jar: java;mkdir -p ./lib && cd classes/ && $(JAR) -cvf ../lib/crassd.jar * ../ipmiselparser/*.xml ../ipmiselparser/*.properties
+install: ;cp ./lib/* $(DESTDIR)/lib/
