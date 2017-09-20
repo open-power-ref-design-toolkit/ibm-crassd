@@ -1,0 +1,39 @@
+# below is the intended file structure to be loaded into a hashmap for rapid access and processing
+# updates may be needed for handling esels. To be determined later
+fileInfo:
+    language: English
+    version: 0.1
+    entity: IBM OpenBMC
+events: 
+    xyz.openbmc_project.Sensor.Device.ReadFailure||/xyz/openbmc_project/sensors/fan_tach/fan0_0:
+        CommonEventID: FQPSPCA0000M
+        Message: Failed to read from fan sensor 1.
+        LengthyDescription: Unable to read from fan sensor 1, resulting in lack of ability to monitor fan speed. 
+        Severity: Critical
+        Serviceable: Yes
+        CallHomeCandidate: No
+        AffectedLEDs: None
+        AffectedSubsystem: Cooling
+        EventType: Unrecoverable Hardware Failure
+        VMMigrationFlag: Yes
+        RelatedEventIDs: {}
+        UserAction: Replace Fan 1. 
+        Internal: No 
+        LogSource: SELAlert
+        Recoverable: No
+    xyz.openbmc_project.Sensor.Device.ReadFailure||/xyz/openbmc_project/sensors/fan_tach/fan1_0:
+        CommonEventID: FQPSPCA0000M
+        Message: Failed to read from fan sensor 2.
+        LengthyDescription: Unable to read from fan sensor 2, resulting in lack of ability to monitor fan speed. 
+        Severity: Critical
+        Serviceable: Yes
+        CallHomeCandidate: No
+        AffectedLEDs: None
+        AffectedSubsystem: Cooling
+        EventType: Unrecoverable Hardware Failure
+        VMMigrationFlag: Yes
+        RelatedEventIDs: {}
+        UserAction: Replace Fan 2. 
+        Internal: No 
+        LogSource: SELAlert
+        Recoverable: No
