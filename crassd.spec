@@ -1,12 +1,12 @@
 # Copyright (c) 2017 International Business Machines.  All right reserved.
 Summary: IBM POWER LC Cluster RAS Service Package
 Name: crassd
-Version: 0.2
+Version: 0.5
 Release: 1
 License: BSD
 Group: System Environment/Base
 URL: http://www.ibm.com/
-Source0: %{name}-%{version}-%{release}.tar.gz
+Source0: %{name}-%{version}-%{release}.tgz
 Prefix: /opt
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 
@@ -24,8 +24,7 @@ Requires(postun): systemd-units
 %endif
 
 # Turn off the brp-python-bytecompile script
-%global __os_install_post %(echo '%{__os_install_post}' | sed -e 's!/usr/lib[^[:
-space:]]*/brp-python-bytecompile[[:space:]].*$!!g')
+%global __os_install_post %(echo '%{__os_install_post}' | sed -e 's!/usr/lib[^[:space:]]*/brp-python-bytecompile[[:space:]].*$!!g')
 
 %description
 This package is to be applied to service nodes in a POWER 9 LC cluster.  It serv
