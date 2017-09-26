@@ -1,6 +1,6 @@
 # Copyright (c) 2017 International Business Machines.  All right reserved.
 Summary: IBM POWER LC Cluster RAS Service Package
-Name: crassd
+Name: ibm-crassd
 Version: 0.5
 Release: 1
 License: BSD
