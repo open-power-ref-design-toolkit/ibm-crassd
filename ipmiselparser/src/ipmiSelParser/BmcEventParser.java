@@ -1,9 +1,8 @@
 package ipmiSelParser;
 
 import java.io.File;
-import java.util.ArrayList;
+import java.io.InputStream;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -29,9 +28,10 @@ import org.w3c.dom.NodeList;
 public class BmcEventParser{
     //private static final Logger LOGGER = SFPCommonLogger.getLogger(SFPProperties.BMCLOGGER);
     
-    private static final String EVENTSPATH = "/ipmiselparser/bmc-events.xml";
-    
-    
+    //private static final String EVENTSPATH = SfpResource.getBmcPath() + File.separator + "bmc-events.xml";
+    //private static final String EVENTSPATH = System.getProperty("user.dir") +File.separator + "bmc-events.xml";
+    //need to update previous line to allow a selection between multiple files based on mt
+    private static final String EVENTSPATH = File.separator + "ipmiSelParser" + File.separator +"resources" + File.separator + "p9SMCBMCevents.xml";
     
     // Query variables
     private static final String XP_CLEAR_WHITESPACE = "//text()[normalize-space(.) = '']";
@@ -57,17 +57,16 @@ public class BmcEventParser{
     private static XPath xpath;
     
     /**
-     * Construct a parser instance with EVENTSPATH.
+     * Construct a parser instance. EVENTSPATH will be /opt/sfp/data/service/bmc .
      * Whitespace will be removed for parsing simplicity
      */
     public BmcEventParser(){
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
         DocumentBuilder builder;
-	String eventFilePath = this.getClass().getClassLoader().getResource(EVENTSPATH).toExternalForm();
- 
         try {
             builder = factory.newDocumentBuilder();
-            doc = builder.parse(eventFilePath);
+            InputStream is = getClass().getResourceAsStream(EVENTSPATH);
+            doc = builder.parse(is);
             
             XPathFactory xPathFactory = XPathFactory.newInstance();
             xpath = xPathFactory.newXPath();

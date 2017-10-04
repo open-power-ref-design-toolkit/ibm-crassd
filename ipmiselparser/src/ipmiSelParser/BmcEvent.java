@@ -200,7 +200,7 @@ public class BmcEvent {
                 "\t\"CerID\": \""+cerId+"\",\n"+
                 "\t\"sensor\": \""+sensor+"\",\n"+
                 "\t\"state\": \""+state+"\",\n" +
-                "\t\"additonalDetlails\": \""+addDetails+"\",\n" +
+                "\t\"additonalDetails\": \""+addDetails+"\",\n" +
                 "\t\"message\": \""+message+"\",\n" +
                 "\t\"serviceable\": \""+serviceable+"\",\n" +
                 "\t\"callHome\": \""+callHome+"\",\n" +

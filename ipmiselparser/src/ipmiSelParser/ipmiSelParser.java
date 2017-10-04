@@ -13,6 +13,7 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -80,9 +81,15 @@ public class ipmiSelParser {
         try{
             Process p = pb.start();
             InputStream inputStream = p.getInputStream();
+            BufferedReader error = new BufferedReader(new InputStreamReader(p.getErrorStream()));
             reader = new BufferedReader(new InputStreamReader(inputStream));
-            p.waitFor();
-            //System.out.println("Import Complete");
+            p.waitFor(60, TimeUnit.SECONDS);
+            String line;
+            while((line = error.readLine()) != null)
+            {
+                System.out.println(line);
+            }
+//System.out.println("Import Complete");
         }
         catch (Exception e){
             System.out.println(e);
@@ -144,8 +151,8 @@ public class ipmiSelParser {
                 Date parsedTS = df.parse(dateTime);
                 String unixTimestamp = Long.toString(parsedTS.getTime()/1000);
                 String mapKey = getMapKey(selPieces, lookupEvents);
-                Map<String,String> eventAttr = null;
-                eventAttr = lookupEvents.get(mapKey);
+                Map eventAttr = null;
+                eventAttr = (lookupEvents.get(mapKey));
                 if (eventAttr != null){
                     cerEvent = createCEREventFromMap(eventAttr);
                     cerEvent.setTimestamp(unixTimestamp);
@@ -172,30 +179,30 @@ public class ipmiSelParser {
         }
         return alertCount;
     }
-    private static BmcEvent createCEREventFromMap(Map<String,String> eventMap){
+    private static BmcEvent createCEREventFromMap(Map eventMap){
         BmcEvent newEvent = new BmcEvent();
-        newEvent.setCerId(eventMap.get("CommonEventID"));
-        newEvent.setSensor(eventMap.get("Sensor"));
-        newEvent.setState(eventMap.get("State"));
-        newEvent.setAddDetails(eventMap.get("AdditionalDetails"));
-        newEvent.setMessage(eventMap.get("Message"));
-        if(eventMap.get("Serviceable").equals("Yes")){
+        newEvent.setCerId(eventMap.get("CommonEventID").toString());
+        newEvent.setSensor(eventMap.get("Sensor").toString());
+        newEvent.setState(eventMap.get("State").toString());
+        newEvent.setAddDetails(eventMap.get("AdditionalDetails").toString());
+        newEvent.setMessage(eventMap.get("Message").toString());
+        if(eventMap.get("Serviceable").toString().equals("Yes")){
             newEvent.setServiceable(true);
         }
         else{
             newEvent.setServiceable(false);
         }
-        if(eventMap.get("CallHomeCandidate").equals("Yes")){
+        if(eventMap.get("CallHomeCandidate").toString().equals("Yes")){
             newEvent.setCallHome(true);
         }
         else{
             newEvent.setCallHome(false);
         }
-        newEvent.setSeverity(eventMap.get("Severity"));
-        newEvent.setEventType(eventMap.get("EventType"));
-        newEvent.setVmMigration(eventMap.get("VMMigrationFlag"));
-        newEvent.setSubSystem(eventMap.get("AffectedSubsystem"));
-        newEvent.setUserAction(eventMap.get("UserAction"));
+        newEvent.setSeverity(eventMap.get("Severity").toString());
+        newEvent.setEventType(eventMap.get("EventType").toString());
+        newEvent.setVmMigration(eventMap.get("VMMigrationFlag").toString());
+        newEvent.setSubSystem(eventMap.get("AffectedSubsystem").toString());
+        newEvent.setUserAction(eventMap.get("UserAction").toString());
         return newEvent;
     }
     /**
