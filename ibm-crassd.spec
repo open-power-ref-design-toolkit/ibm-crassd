@@ -5,6 +5,7 @@ Version: 0.5
 Release: 1
 License: BSD
 Group: System Environment/Base
+BuildArch: noarch
 URL: http://www.ibm.com/
 Source0: %{name}-%{version}-%{release}.tgz
 Prefix: /opt
