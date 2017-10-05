@@ -41,7 +41,6 @@ import json
 def sigHandler(signum, frame):
     if (signum == signal.SIGTERM or signum == signal.SIGINT):
         print("Termination signal received.")
-        errorHandler(syslog.LOG_ERR, "The Power HW Monitoring service has been stopped")
         global killNow
         killNow = True
     else:
@@ -121,65 +120,69 @@ def notifyCSM(cerEvent, impactedNode, failedFirstFlag):
 def BMCEventProcessor():
     eventsDict = {};
     global csmDown
+    global killNow;
     while True:
-        node = nodes2poll.get()
-        name = threading.currentThread().getName()
-        bmcHostname = node['bmcHostname']
-        try:
-            print(name +": " + bmcHostname)
-            if(node['accessType']=="openbmcRest"):
-                proc = subprocess.Popen(['python', 'openbmctool.py', '-H', bmcHostname, '-U', 'root', '-P', '0penBmc','-j', 'sel', 'list'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-                eventList = proc.communicate()[0]
-                eventList = eventList[eventList.index('{'):]
-                eventsDict = json.loads(eventList)
-            elif(node['accessType']=="ipmi"):
-                proc= subprocess.Popen(['java', '-jar', '/opt/ibm/ras/lib/crassd.jar', bmcHostname, "ADMIN", 'ADMIN'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-                eventList = proc.communicate()[0]
-                eventList = eventList[eventList.index('{'):]
-                eventsDict = json.loads(eventList)
-                print("processing alerts")
-            else:
-                #use redfish
-                time.sleep(1)
-            
-            for i in range(0, len(eventsDict)-1):
-                event = "event" +str(i)
-                if "error" in eventsDict[event]:
-                    begIndex = eventsDict[event]['error'].rfind(":") + 2
-                    missingKey = eventsDict[event]['error'][begIndex:]
-                    if(missingKey not in missingEvents.keys()):
-                        with lock: 
-                            missingEvents[missingKey] = True
-                        errorHandler(syslog.LOG_ERR, "Event not found in lookup table: " + missingKey)
+        if killNow: 
+            break
+        else:
+            node = nodes2poll.get()
+            name = threading.currentThread().getName()
+            bmcHostname = node['bmcHostname']
+            try:
+                print(name +": " + bmcHostname)
+                if(node['accessType']=="openbmcRest"):
+                    proc = subprocess.Popen(['python', 'openbmctool.py', '-H', bmcHostname, '-U', 'root', '-P', '0penBmc','-j', 'sel', 'list'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                    eventList = proc.communicate()[0]
+                    eventList = eventList[eventList.index('{'):]
+                    eventsDict = json.loads(eventList)
+                elif(node['accessType']=="ipmi"):
+                    proc= subprocess.Popen(['java', '-jar', '/opt/ibm/ras/lib/crassd.jar', bmcHostname, "ADMIN", 'ADMIN'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                    eventList = proc.communicate()[0]
+                    eventList = eventList[eventList.index('{'):] #keyboard terminate causing substring not found here
+                    eventsDict = json.loads(eventList)
+                    print("processing alerts")
                 else:
-                    #only report new events
-                    if(eventsDict[event]['timestamp']>node['lastLogTime']):
-                        reported = notifyCSM(eventsDict[event], bmcHostname, False)
-                        if reported:
+                    #use redfish
+                    time.sleep(1)
+                
+                for i in range(0, len(eventsDict)-1):
+                    event = "event" +str(i)
+                    if "error" in eventsDict[event]:
+                        begIndex = eventsDict[event]['error'].rfind(":") + 2
+                        missingKey = eventsDict[event]['error'][begIndex:]
+                        if(missingKey not in missingEvents.keys()):
                             with lock: 
-                                node['lastLogTime'] = eventsDict[event]['timestamp']
-                                del node['dupTimeIDList'][:]
-                        else:
-                            if(csmDown = False):
-                                reported = notifyCSM(eventsDict[event], bmcHostname)
-                                if(reported = False):
-                                    errorHandler(syslog.LOG_ERR, "Unable to forward HW event to CSM: "+ msgID )
-                                    break
-                            else:
-                                break
-                    if(eventsDict[event]['timestamp']== node['lastLogTime']):
-                        if(eventsDict[event]['CerID'] not in node['dupTimeIDList']):
-                            reported = notifyCSM(eventsDict[event], bmcHostname)
+                                missingEvents[missingKey] = True
+                            errorHandler(syslog.LOG_ERR, "Event not found in lookup table: " + missingKey)
+                    else:
+                        #only report new events
+                        if(eventsDict[event]['timestamp']>node['lastLogTime']):
+                            reported = notifyCSM(eventsDict[event], bmcHostname, False)
                             if reported:
                                 with lock: 
-                                    node['dupTimeIDList'].append(eventsDict[event]['timestamp'])
+                                    node['lastLogTime'] = eventsDict[event]['timestamp']
+                                    del node['dupTimeIDList'][:]
                             else:
-                                break
-            reported = False               
-            nodes2poll.task_done()
-        except Exception as e:
-            print(e)
-        eventsDict.clear()
+                                if(csmDown == False):
+                                    reported = notifyCSM(eventsDict[event], bmcHostname)
+                                    if(reported == False):
+                                        errorHandler(syslog.LOG_ERR, "Unable to forward HW event to CSM: "+ event['CerID'] )
+                                        break
+                                else:
+                                    break
+                        if(eventsDict[event]['timestamp']== node['lastLogTime']):
+                            if(eventsDict[event]['CerID'] not in node['dupTimeIDList']):
+                                reported = notifyCSM(eventsDict[event], bmcHostname)
+                                if reported:
+                                    with lock: 
+                                        node['dupTimeIDList'].append(eventsDict[event]['timestamp'])
+                                else:
+                                    break
+                reported = False               
+                nodes2poll.task_done()
+            except Exception as e:
+                print(str(e))
+            eventsDict.clear()
 """
      Loads the information from the configuration file and initializes the daemon for main operation
        
@@ -219,13 +222,16 @@ def initialize():
 """ 
 def pollNodes():
     print ("polling the nodes")
-    t = threading.Timer(20.0, pollNodes)
-    t.daemon = True
-    t.start()
+    global killNow
+    if not killNow:
+        t = threading.Timer(20.0, pollNodes)
+        t.daemon = True
+        t.start()
     
     
     for i in range (len(mynodelist)):
         nodes2poll.put(mynodelist[i])
+    
     
 """
      main thread for the applications. Runs a single thread to process node alerts. 
@@ -237,7 +243,7 @@ if __name__ == '__main__':
         missingEvents = {}
         lock = threading.Lock()
         initialize()
-        
+        global killNow
 #         nodes2poll.join()
         
         print(os.getpid())
@@ -247,7 +253,8 @@ if __name__ == '__main__':
                 BMCEventProcessor()
             if(killNow):
                 break
+        errorHandler(syslog.LOG_ERR, "The Power HW Monitoring service has been stopped")
         sys.exit()
     except KeyboardInterrupt:
         print ("Terminating")
-        return 0
+        sys.exit()
