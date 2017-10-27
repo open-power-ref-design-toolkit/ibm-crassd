@@ -37,3 +37,67 @@ events:
         Internal: No 
         LogSource: SELAlert
         Recoverable: No
+    xyz.openbmc_project.Inventory.Error.Nonfunctional||/xyz/openbmc_project/inventory/system/chassis/motherboard/fan0:
+        CommonEventID: FQPSPCA0056M
+        Message: Fan 1 has failed.
+        LengthyDescription: Fan 1 has failed. It may still be spinning but cannot provide sufficient cooling. 
+        Severity: Critical
+        Serviceable: Yes
+        CallHomeCandidate: Yes
+        AffectedLEDs: Fault
+        AffectedSubsystem: Cooling
+        EventType: Unrecoverable Hardware Failure
+        VMMigrationFlag: Yes
+        RelatedEventIDs: {}
+        UserAction: Replace Fan 1. 
+        Internal: No 
+        LogSource: SELAlert
+        Recoverable: No
+    xyz.openbmc_project.Inventory.Error.Nonfunctional||/xyz/openbmc_project/inventory/system/chassis/motherboard/fan1:
+        CommonEventID: FQPSPCA0056M
+        Message: Fan 2 has failed.
+        LengthyDescription: Fan 2 has failed. It may still be spinning but cannot provide sufficient cooling. 
+        Severity: Critical
+        Serviceable: Yes
+        CallHomeCandidate: Yes
+        AffectedLEDs: Fault
+        AffectedSubsystem: Cooling
+        EventType: Unrecoverable Hardware Failure
+        VMMigrationFlag: Yes
+        RelatedEventIDs: {}
+        UserAction: Replace Fan 2. 
+        Internal: No 
+        LogSource: SELAlert
+        Recoverable: No
+    xyz.openbmc_project.Inventory.Error.Nonfunctional||/xyz/openbmc_project/inventory/system/chassis/motherboard/fan2:
+        CommonEventID: FQPSPCA0056M
+        Message: Fan 3 has failed.
+        LengthyDescription: Fan 3 has failed. It may still be spinning but cannot provide sufficient cooling. 
+        Severity: Critical
+        Serviceable: Yes
+        CallHomeCandidate: Yes
+        AffectedLEDs: Fault
+        AffectedSubsystem: Cooling
+        EventType: Unrecoverable Hardware Failure
+        VMMigrationFlag: Yes
+        RelatedEventIDs: {}
+        UserAction: Replace Fan 3. 
+        Internal: No 
+        LogSource: SELAlert
+        Recoverable: No
+    xyz.openbmc_project.Inventory.Error.Nonfunctional||/xyz/openbmc_project/inventory/system/chassis/motherboard/fan3:
+        CommonEventID: FQPSPCA0056M
+        Message: Fan 4 has failed.
+        LengthyDescription: Fan 4 has failed. It may still be spinning but cannot provide sufficient cooling. 
+        Severity: Critical
+        Serviceable: Yes
+        CallHomeCandidate: Yes
+        AffectedLEDs: Fault
+        AffectedSubsystem: Cooling
+        EventType: Unrecoverable Hardware Failure
+        VMMigrationFlag: Yes
+        RelatedEventIDs: {}
+        UserAction: Replace Fan 4. 
+        Internal: No 
+        LogSource: SELAlert
+        Recoverable: No

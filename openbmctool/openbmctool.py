@@ -22,8 +22,12 @@ import getpass
 import json
 import os
 import urllib3
-import time
-from dns.rdatatype import NULL
+import time, datetime
+import yaml
+import binascii
+import subprocess
+import platform
+import zipfile
 
 #isTTY = sys.stdout.isatty()
 
@@ -70,20 +74,21 @@ def connectionErrHandler(jsonFormat, errorStr, err):
         if not jsonFormat:
             print("FQPSPIN0000M: Connection timed out. Ensure you have network connectivity to the bmc")
         else:
-            errorMessageStr = ("{\n\t\"Event\":{\n" +
-            "\t\t\"CerID\": \"FQPSPIN0000M\",\n"+
+            errorMessageStr = ("{\n\t\"event0\":{\n" +
+            "\t\t\"CommonEventID\": \"FQPSPIN0000M\",\n"+
             "\t\t\"sensor\": \"N/A\",\n"+
             "\t\t\"state\": \"N/A\",\n" +
-            "\t\t\"additonalDetlails\": \"N/A\",\n" +
-            "\t\t\"message\": \"Connection timed out. Ensure you have network connectivity to the BMC\",\n" +
-            "\t\t\"serviceable\": \"Yes\",\n" +
-            "\t\t\"callHome\": \"No\",\n" +
-            "\t\t\"severity\": \"Critical\",\n" +
-            "\t\t\"eventType\": \"Communication Failure/Timeout\",\n" +
-            "\t\t\"vmMigration\": \"Yes\",\n" +
-            "\t\t\"subSystem\": \"Interconnect (Networking)\",\n" +
-            "\t\t\"timestamp\": \""+str(time.time())+"\",\n" +
-            "\t\t\"userAction\": \"Verify network connectivity between the two systems and the bmc is functional.\"" +
+            "\t\t\"additionalDetails\": \"N/A\",\n" +
+            "\t\t\"Message\": \"Connection timed out. Ensure you have network connectivity to the BMC\",\n" +
+            "\t\t\"LengthyDescription\": \"While trying to establish a connection with the specified BMC, the BMC failed to respond in adequate time. Verify the BMC is functioning properly, and the network connectivity to the BMC is stable.\",\n" +
+            "\t\t\"Serviceable\": \"Yes\",\n" +
+            "\t\t\"CallHomeCandidate\": \"No\",\n" +
+            "\t\t\"Severity\": \"Critical\",\n" +
+            "\t\t\"EventType\": \"Communication Failure/Timeout\",\n" +
+            "\t\t\"VMMigrationFlag\": \"Yes\",\n" +
+            "\t\t\"AffectedSubsystem\": \"Interconnect (Networking)\",\n" +
+            "\t\t\"timestamp\": \""+str(int(time.time()))+"\",\n" +
+            "\t\t\"UserAction\": \"Verify network connectivity between the two systems and the bmc is functional.\"" +
             "\t\n}, \n" +
             "\t\"numAlerts\": \"1\" \n}");
             print(errorMessageStr)
@@ -91,20 +96,21 @@ def connectionErrHandler(jsonFormat, errorStr, err):
         if not jsonFormat:
             print("FQPSPIN0001M: " + str(err))
         else:
-            errorMessageStr = ("{\n\t\"Event\":{\n" +
-            "\t\t\"CerID\": \"FQPSPIN0001M\",\n"+
+            errorMessageStr = ("{\n\t\"event0\":{\n" +
+            "\t\t\"CommonEventID\": \"FQPSPIN0001M\",\n"+
             "\t\t\"sensor\": \"N/A\",\n"+
             "\t\t\"state\": \"N/A\",\n" +
-            "\t\t\"additonalDetlails\": \"" + str(err)+",\n" +
-            "\t\t\"message\": \"Connection Error. View additional details for more information\",\n" +
-            "\t\t\"serviceable\": \"Yes\",\n" +
-            "\t\t\"callHome\": \"No\",\n" +
-            "\t\t\"severity\": \"Critical\",\n" +
-            "\t\t\"eventType\": \"Communication Failure/Timeout\",\n" +
-            "\t\t\"vmMigration\": \"Yes\",\n" +
-            "\t\t\"subSystem\": \"Interconnect (Networking)\",\n" +
-            "\t\t\"timestamp\": \""+time.time()+"\",\n" +
-            "\t\t\"userAction\": \"Correct the issue highlighted in additional details and try again\"" +
+            "\t\t\"additionalDetails\": \"" + str(err)+"\",\n" +
+            "\t\t\"Message\": \"Connection Error. View additional details for more information\",\n" +
+            "\t\t\"LengthyDescription\": \"A connection error to the specified BMC occurred and additional details are provided. Review these details to resolve the issue.\",\n" +
+            "\t\t\"Serviceable\": \"Yes\",\n" +
+            "\t\t\"CallHomeCandidate\": \"No\",\n" +
+            "\t\t\"Severity\": \"Critical\",\n" +
+            "\t\t\"EventType\": \"Communication Failure/Timeout\",\n" +
+            "\t\t\"VMMigrationFlag\": \"Yes\",\n" +
+            "\t\t\"AffectedSubsystem\": \"Interconnect (Networking)\",\n" +
+            "\t\t\"timestamp\": \""+str(int(time.time()))+"\",\n" +
+            "\t\t\"UserAction\": \"Correct the issue highlighted in additional details and try again\"" +
             "\t\n}, \n" +
             "\t\"numAlerts\": \"1\" \n}");
             print(errorMessageStr)
@@ -132,6 +138,17 @@ def setColWidth(keylist, numCols, dictForOutput, colNames):
         colWidths[x] = max(colWidths[x], len(colNames[x])) +2
     
     return colWidths
+
+def loadPolicyTable(pathToPolicyTable):
+    policyTable = {}
+    if(os.path.exists(pathToPolicyTable)):
+        with open(pathToPolicyTable, 'r') as stream:
+            try:
+                contents = yaml.load(stream)
+                policyTable = contents['events']
+            except yaml.YAMLError as err:
+                print(err)
+    return policyTable
 
 """
      Logs into the BMC and creates a session
@@ -224,7 +241,7 @@ def fru(host, args, session):
 #                 bold = False
 #             fruEntry = hilight(fruEntry, color, bold)
 #         print (fruEntry)
-    print(sample)
+    return sample
 """
      prints out all inventory
        
@@ -232,12 +249,20 @@ def fru(host, args, session):
      @param args: contains additional arguments used by the fru sub command
      @param session: the active session to use
      @param args.json: boolean, if this flag is set to true, the output will be provided in json format for programmatic consumption 
+     @return returns the total fru list. 
 """ 
 def fruPrint(host, args, session):   
     url="https://"+host+"/xyz/openbmc_project/inventory/enumerate"
     httpHeader = {'Content-Type':'application/json'}
     res = session.get(url, headers=httpHeader, verify=False)
-    print(res.text)
+#     print(res.text)
+    frulist = res.text
+    url="https://"+host+"/xyz/openbmc_project/software/enumerate"
+    res = session.get(url, headers=httpHeader, verify=False)
+#     print(res.text)
+    frulist = frulist +"\n" + res.text
+    
+    return frulist
 
 """
      prints out all inventory or only a specific specified item
@@ -249,9 +274,9 @@ def fruPrint(host, args, session):
 """ 
 def fruList(host, args, session):
     if(args.items==True):
-        fruPrint(host, args, session)
+        return fruPrint(host, args, session)
     else:
-        print("not implemented at this time")
+        return "not implemented at this time"
 
 
 """
@@ -291,7 +316,7 @@ def sensor(host, args, session):
             senDict['sensorName'] = keyparts[-1]
             senDict['type'] = keyparts[-2]
             senDict['units'] = sensors[key]['Unit'].split('.')[-1]
-            if(sensors[key]['Scale'] != NULL): 
+            if('Scale' in sensors[key]): 
                 scale = 10 ** sensors[key]['Scale'] 
             else: 
                 scale = 1
@@ -304,19 +329,21 @@ def sensor(host, args, session):
         keylist = ['sensorName', 'type', 'units', 'value', 'target']
         colWidth = setColWidth(keylist, len(colNames), output, colNames)
         row = ""
+        outputText = ""
         for i in range(len(colNames)):
             if (i != 0): row = row + "| "
             row = row + colNames[i].ljust(colWidth[i])
-        print(row)
+        outputText += row + "\n"
         sortedKeys = list(output.keys()).sort
         for key in sorted(output.keys()):
             row = ""
             for i in range(len(output[key])):
                 if (i != 0): row = row + "| "
                 row = row + output[key][keylist[i]].ljust(colWidth[i])
-            print(row)
+            outputText += row + "\n"
+        return outputText
     else:
-        print(res.text)
+        return res.text
 """
      prints out the bmc alerts
        
@@ -327,11 +354,280 @@ def sensor(host, args, session):
 """     
 def sel(host, args, session):
 
-    url="https://"+host+"/xyz/openbmc_project/logging/enumerate"
+    url="https://"+host+"/xyz/openbmc_project/logging/entry/enumerate"
     httpHeader = {'Content-Type':'application/json'}
     #print(url)
     res = session.get(url, headers=httpHeader, verify=False, timeout=20)
     return res
+
+
+"""
+     converts a boolean value to a human readable string value
+       
+     @param value: boolean, the value to convert
+     @return: A string of "Yes" or "No"
+""" 
+def boolToString(value):
+    if(value):
+        return "Yes"
+    else:
+        return "No"
+    
+"""
+     parses the esel data and gets predetermined search terms
+       
+     @param eselRAW: string, the raw esel string from the bmc
+     @return: A dictionary containing the quick snapshot data unless args.fullEsel is listed then a full PEL log is returned
+"""    
+def parseESEL(args, eselRAW):
+    eselParts = {}
+    esel_bin = binascii.unhexlify(''.join(eselRAW.split()[16:]))
+    #search terms contains the search term as the key and the return dictionary key as it's value
+    searchTerms = {'PRD SRC Class': 'eselType', 'Signature Description':'signatureDescription', 'devdesc':'devdesc',
+                    'Callout type': 'calloutType', 'Reference Code':'refCode', 'Procedure':'procedure'}
+    with open('/tmp/esel.bin', 'w') as f:
+        f.write(esel_bin)
+    errlPath = ""
+    #use the right errl file for the machine architecture
+    arch = platform.machine()
+    if(arch =='x86_64' or arch =='AMD64'):
+        if os.path.exists('/opt/ibm/ras/bin/x86_64/errl'):
+            errlPath = '/opt/ibm/ras/bin/x86_64/errl'
+        elif os.path.exists('errl/x86_64/errl'):
+            errlPath = 'errl/x86_64/errl'
+        else:
+            errlPath = 'x86_64/errl'
+    elif (platform.machine()=='ppc64le'):
+        if os.path.exists('/opt/ibm/ras/bin/ppc64le/errl'):
+            errlPath = '/opt/ibm/ras/bin/ppc64le/errl'
+        elif os.path.exists('errl/ppc64le/errl'):
+            errlPath = 'errl/ppc64le/errl'
+        else:
+            errlPath = 'ppc64le/errl'
+    else:
+        print("machine architecture not supported for parsing eSELs")
+        return eselParts
+    
+    
+    
+    if(os.path.exists(errlPath)):
+        proc= subprocess.Popen([errlPath, '-d', '--file=/tmp/esel.bin', '-t', '/opt/ibm/ras/lib/hbotStringFile'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        output = proc.communicate()[0]
+        lines = output.split('\n')
+        
+        if(hasattr(args, 'fullEsel')):
+            return output
+        
+        for i in range(0, len(lines)):
+            lineParts = lines[i].split(':')
+            if(len(lineParts)>1): #ignore multi lines, output formatting lines, and other information
+                for term in searchTerms:
+                    if(term in lineParts[0]):
+                        temp = lines[i][lines[i].find(':')+1:].strip()[:-1].strip()
+                        if lines[i+1].find(':') != -1:
+                            if (len(lines[i+1].split(':')[0][1:].strip())==0):
+                                while(len(lines[i][:lines[i].find(':')].strip())>2):
+                                    if((i+1) <= len(lines)):
+                                        i+=1
+                                    else:
+                                        i=i-1
+                                        break
+                                    temp = temp + lines[i][lines[i].find(':'):].strip()[:-1].strip()[:-1].strip()
+                        eselParts[searchTerms[term]] = temp
+    else:
+        print("errl file cannot be found")
+    
+    return eselParts                
+"""
+     parses alerts in the IBM CER format, using an IBM policy Table
+       
+     @param policyTable: dictionary, the policy table entries
+     @param selEntries: dictionary, the alerts retrieved from the bmc
+     @return: A dictionary of the parsed entries
+""" 
+def parseAlerts(policyTable, selEntries, args):
+    eventDict = {}
+    eventNum =""
+    count = 0
+    esel = ""
+    eselParts = {}
+    
+    for key in selEntries:
+        hasEsel=False
+        if 'callout' in key:
+            continue
+        else:
+            messageID = str(selEntries[key]['Message'])
+            addDataPiece = selEntries[key]['AdditionalData']
+            calloutIndex = 0
+            calloutFound = False
+            for i in range(len(addDataPiece)):
+                if("CALLOUT_INVENTORY_PATH" in addDataPiece[i]):
+                    calloutIndex = i
+                    calloutFound = True
+                if("ESEL" in addDataPiece[i] and args.devdebug):
+                    esel = str(addDataPiece[i]).strip().split('=')[1]
+                    eselParts = parseESEL(args, esel)
+                    hasEsel=True
+                    
+            if(calloutFound):
+                fruCallout = str(addDataPiece[calloutIndex]).split('=')[1]
+                policyKey = messageID +"||" +  fruCallout
+            else:
+                policyKey = messageID
+            event = {}
+            eventNum = str(count)
+            if policyKey in policyTable:
+                for pkey in policyTable[policyKey]:
+                    if(type(policyTable[policyKey][pkey])== bool):
+                        event[pkey] = boolToString(policyTable[policyKey][pkey])
+                    else:
+                        event[pkey] = policyTable[policyKey][pkey]
+                event['timestamp'] = selEntries[key]['Timestamp']
+                event['resolved'] = bool(selEntries[key]['Resolved'])
+                if(hasEsel):
+                    event['eselParts'] = eselParts
+                    event['raweSEL'] = esel
+                event['logNum'] = key.split('/')[-1]
+                eventDict['event' + eventNum] = event
+                
+            else:
+                severity = str(selEntries[key]['Severity']).split('.')[-1]
+                if severity == 'Error':
+                    severity = 'Critical'
+                eventDict['event'+eventNum] = {}
+                eventDict['event' + eventNum]['error'] = "error: Not found in policy table: " + policyKey
+                eventDict['event' + eventNum]['timestamp'] = selEntries[key]['Timestamp']
+                eventDict['event' + eventNum]['Severity'] = severity
+                eventDict['event' +eventNum]['eselParts'] = eselParts
+                eventDict['event' +eventNum]['raweSEL'] = esel
+                eventDict['event' +eventNum]['logNum'] = key.split('/')[-1]
+                eventDict['event' +eventNum]['resolved'] = bool(selEntries[key]['Resolved'])
+                #print("Event entry "+eventNum+": not found in policy table: " + policyKey)
+            count += 1
+    return eventDict
+
+"""
+     sorts the sels by log entry number
+       
+     @param events: Dictionary containing events
+     @return: list containing a list of the ordered log entries, and dictionary of keys
+""" 
+def sortSELs(events):
+    logNumList = []
+    eventKeyDict = {}
+    for key in events:
+        if key =='numAlerts': continue
+        logNum = int(events[key]['logNum'])
+        logNumList.append(logNum)
+        eventKeyDict[str(logNum)] = key
+    logNumList.sort()
+    return [logNumList, eventKeyDict]
+"""
+     displays alerts in human readable format
+       
+     @param events: Dictionary containing events
+     @return: 
+""" 
+def selDisplay(events, args):
+    activeAlerts = []
+    historyAlerts = []
+    sortedEntries = sortSELs(events)
+    logNumList = sortedEntries[0]
+    eventKeyDict = sortedEntries[1]
+    keylist = ['Entry', 'ID', 'Timestamp', 'Serviceable', 'Severity','Message']
+    if(args.devdebug):
+        colNames = ['Entry', 'ID', 'Timestamp', 'Serviceable', 'Severity','Message',  'eSEL contents']
+        keylist.append('eSEL')
+    else:
+        colNames = ['Entry', 'ID', 'Timestamp', 'Serviceable', 'Severity', 'Message']
+    for log in logNumList:
+        selDict = {}
+        alert = events[eventKeyDict[str(log)]]
+        if('error' in alert):
+            selDict['Entry'] = alert['logNum']
+            selDict['ID'] = 'Unknown'
+            selDict['Timestamp'] = datetime.datetime.fromtimestamp(int(alert['timestamp']/1000)).strftime("%Y-%m-%d %H:%M:%S")
+            msg = alert['error']
+            polMsg = msg.split("policy table:")[0]
+            msg = msg.split("policy table:")[1]
+            msgPieces = msg.split("||")
+            err = msgPieces[0]
+            if(err.find("org.open_power.")!=-1):
+                err = err.split("org.open_power.")[1]
+            elif(err.find("xyz.openbmc_project.")!=-1):
+                err = err.split("xyz.openbmc_project.")[1]
+            else:
+                err = msgPieces[0]
+            callout = ""
+            if len(msgPieces) >1:
+                callout = msgPieces[1]
+                if(callout.find("/org/open_power/")!=-1):
+                    callout = callout.split("/org/open_power/")[1]
+                elif(callout.find("/xyz/openbmc_project/")!=-1):
+                    callout = callout.split("/xyz/openbmc_project/")[1]
+                else:
+                    callout = msgPieces[1]
+            selDict['Message'] = polMsg +"policy table: "+ err +  "||" + callout
+            selDict['Serviceable'] = 'Unknown'  
+            selDict['Severity'] = alert['Severity']
+        else:
+            selDict['Entry'] = alert['logNum']
+            selDict['ID'] = alert['CommonEventID']
+            selDict['Timestamp'] = datetime.datetime.fromtimestamp(int(alert['timestamp']/1000)).strftime("%Y-%m-%d %H:%M:%S")
+            selDict['Message'] = alert['Message'] 
+            selDict['Serviceable'] = alert['Serviceable']  
+            selDict['Severity'] = alert['Severity']
+        
+        if ('eselParts' in alert and args.devdebug):
+            eselOutput = ""
+            for item in alert['eselParts']:
+                eselOutput = eselOutput + item + ": " + alert['eselParts'][item] + " | "
+            selDict['eSEL'] = eselOutput
+        else:
+            if args.devdebug:
+                selDict['eSEL'] = "None"
+        
+        if not alert['resolved']:
+            activeAlerts.append(selDict)
+        else:
+            historyAlerts.append(selDict)
+    mergedOutput = activeAlerts + historyAlerts
+    colWidth = setColWidth(keylist, len(colNames), dict(enumerate(mergedOutput)), colNames) 
+    
+    output = ""
+    if(len(activeAlerts)>0):
+        row = ""   
+        output +="----Active Alerts----\n"
+        for i in range(0, len(colNames)):
+            if i!=0: row =row + "| "
+            row = row + colNames[i].ljust(colWidth[i])
+        output += row + "\n"
+    
+        for i in range(0,len(activeAlerts)):
+            row = ""
+            for j in range(len(activeAlerts[i])):
+                if (j != 0): row = row + "| "
+                row = row + activeAlerts[i][keylist[j]].ljust(colWidth[j])
+            output += row + "\n"
+    
+    if(len(historyAlerts)>0): 
+        row = ""   
+        output+= "----Historical Alerts----\n"   
+        for i in range(len(colNames)):
+            if i!=0: row =row + "| "
+            row = row + colNames[i].ljust(colWidth[i])
+        output += row + "\n"
+    
+        for i in range(0, len(historyAlerts)):
+            row = ""
+            for j in range(len(historyAlerts[i])):
+                if (j != 0): row = row + "| "
+                row = row + historyAlerts[i][keylist[j]].ljust(colWidth[j])
+            output += row + "\n"
+#         print(events[eventKeyDict[str(log)]])
+    return output        
+
 """
      prints out all bmc alerts
        
@@ -341,7 +637,36 @@ def sel(host, args, session):
      @param args.json: boolean, if this flag is set to true, the output will be provided in json format for programmatic consumption 
 """ 
 def selPrint(host, args, session):
-    print(sel(host, args, session).text)
+    if(args.policyTableLoc is None):
+        ptableLoc = "policyTable.yml"
+    else:
+        ptableLoc = args.policyTableLoc
+    policyTable = loadPolicyTable(ptableLoc)
+    selEntries = json.loads(sel(host, args, session).text)['data']
+    cerList = {}
+    if 'description' in selEntries:
+        if(args.json):
+            return("{\n\t\"numAlerts\": 0\n}")
+        else:
+            return("No log entries found")
+        
+    else:
+        if(len(policyTable)>0):
+            events = parseAlerts(policyTable, selEntries, args)
+            if(args.json):
+                events["numAlerts"] = len(events)
+                return json.dumps(events, sort_keys=True, indent=4, separators=(',', ': '))
+            elif(hasattr(args, 'fullSel')):
+                return events
+            else:
+                #get log numbers to order event entries sequentially
+                return selDisplay(events, args)
+        else:
+            if(args.json):
+                return selEntries
+            else:
+                print("error: Policy Table not found.")
+                return selEntries
 """
      prints out all all bmc alerts, or only prints out the specified alerts
        
@@ -362,37 +687,57 @@ def selList(host, args, session):
      @param args.json: boolean, if this flag is set to true, the output will be provided in json format for programmatic consumption 
 """      
 def selClear(host, args, session):
-    print("to be implemented")
-"""
-     gathers the esels
-       
-     @param host: string, the hostname or IP address of the bmc
-     @param args: contains additional arguments used by the fru sub command
-     @param session: the active session to use
-     @param args.json: boolean, if this flag is set to true, the output will be provided in json format for programmatic consumption 
-"""     
-def getESEL(host, args, session):
-    selentry= args.selNum
-    url="https://"+host+"/xyz/openbmc_project/logging/entry" + str(selentry)
+    url="https://"+host+"/xyz/openbmc_project/logging/action/DeleteAll"
     httpHeader = {'Content-Type':'application/json'}
-    print(url)
-    res = session.get(url, headers=httpHeader, verify=False, timeout=20)
-    e = res.json()
-    if e['Message'] != 'org.open_power.Error.Host.Event' and\
-       e['Message'] != 'org.open_power.Error.Host.Event.Event':
-        raise Exception("Event is not from Host: " + e['Message'])
-    for d in e['AdditionalData']:
-        data = d.split("=")
-        tag = data.pop(0)
-        if tag != 'ESEL':
-            continue
-        data = "=".join(data)
-        if args.binary:
-            data = data.split(" ")
-            if '' == data[-1]:
-                data.pop()
-            data = "".join(map(lambda x: chr(int(x, 16)), data))
-        print(data)
+    data = "{\"data\": [] }"
+    #print(url)
+    res = session.put(url, headers=httpHeader, data=data, verify=False, timeout=30)
+    if res.status_code == 200:
+        return "The Alert Log has been cleared. Please allow a few minutes for the action to complete."
+    else:
+        return "Unable to clear the logs"
+
+def selSetResolved(host, args, session):
+    url="https://"+host+"/xyz/openbmc_project/logging/entry/" + str(args.selNum) + "/attr/Resolved"
+    httpHeader = {'Content-Type':'application/json'}
+    data = "{\"data\": 1 }"
+    #print(url)
+    res = session.put(url, headers=httpHeader, data=data, verify=False, timeout=30)
+    if res.status_code == 200:
+        return "Sel entry "+ str(args.selNum) +" is now set to resolved"
+    else:
+        return "Unable to set the alert to resolved"
+    
+# """
+#      gathers the esels. deprecated
+#        
+#      @param host: string, the hostname or IP address of the bmc
+#      @param args: contains additional arguments used by the fru sub command
+#      @param session: the active session to use
+#      @param args.json: boolean, if this flag is set to true, the output will be provided in json format for programmatic consumption 
+# """     
+# def getESEL(host, args, session):
+#     selentry= args.selNum
+#     url="https://"+host+"/xyz/openbmc_project/logging/entry" + str(selentry)
+#     httpHeader = {'Content-Type':'application/json'}
+#     print(url)
+#     res = session.get(url, headers=httpHeader, verify=False, timeout=20)
+#     e = res.json()
+#     if e['Message'] != 'org.open_power.Error.Host.Event' and\
+#        e['Message'] != 'org.open_power.Error.Host.Event.Event':
+#         raise Exception("Event is not from Host: " + e['Message'])
+#     for d in e['AdditionalData']:
+#         data = d.split("=")
+#         tag = data.pop(0)
+#         if tag != 'ESEL':
+#             continue
+#         data = "=".join(data)
+#         if args.binary:
+#             data = data.split(" ")
+#             if '' == data[-1]:
+#                 data.pop()
+#             data = "".join(map(lambda x: chr(int(x, 16)), data))
+#         print(data)
 """
      controls the different chassis commands
        
@@ -402,10 +747,12 @@ def getESEL(host, args, session):
      @param args.json: boolean, if this flag is set to true, the output will be provided in json format for programmatic consumption 
 """ 
 def chassis(host, args, session):
-    if(args.powcmd is not None):
+    if(hasattr(args, 'powcmd')):
         chassisPower(host,args,session)
+    elif(hasattr(args, 'identcmd')):
+        chassisIdent(host, args, session)
     else:
-        print ("to be completed")
+        return "to be completed"
 """
      called by the chassis function. Controls the power state of the chassis, or gets the status
        
@@ -418,45 +765,161 @@ def chassisPower(host, args, session):
     if(args.powcmd == 'on'):
         print("Attempting to Power on...:")
         url="https://"+host+"/xyz/openbmc_project/state/host0/attr/RequestedHostTransition"
-        httpHeader = {'Content-Type':'application/json'}
-        data = '{"data":"xyz.openbmc_project.State.Host.Transition.On"'
-        res = session.post(url, headers=httpHeader, data=data, verify=False, timeout=20)
-        print(res.text)
+        httpHeader = {'Content-Type':'application/json',}
+        data = '{"data":"xyz.openbmc_project.State.Host.Transition.On"}'
+        res = session.put(url, headers=httpHeader, data=data, verify=False, timeout=20)
+        return res.text
     elif(args.powcmd == 'off'):
         print("Attempting to Power off...:")
         url="https://"+host+"/xyz/openbmc_project/state/host0/attr/RequestedHostTransition"
         httpHeader = {'Content-Type':'application/json'}
-        data = '{"data":"xyz.openbmc_project.State.Host.Transition.Off"'
-        res = session.post(url, headers=httpHeader, data=data, verify=False, timeout=20)
-        print(res.text)
+        data = '{"data":"xyz.openbmc_project.State.Host.Transition.Off"}'
+        res = session.put(url, headers=httpHeader, data=data, verify=False, timeout=20)
+        return res.text
     elif(args.powcmd == 'status'):
         url="https://"+host+"/xyz/openbmc_project/state/chassis0/attr/CurrentPowerState"
         httpHeader = {'Content-Type':'application/json'}
-        print(url)
+#         print(url)
         res = session.get(url, headers=httpHeader, verify=False, timeout=20)
-        print(res.text)
+        return res.text
     else:
-        print("Invalid chassis power command")
-
+        return "Invalid chassis power command"
 
 """
-     handles various bmc level commands, currently bmc rebooting
+     called by the chassis function. Controls the identify led of the chassis. Sets or gets the state
        
      @param host: string, the hostname or IP address of the bmc
      @param args: contains additional arguments used by the fru sub command
      @param session: the active session to use
      @param args.json: boolean, if this flag is set to true, the output will be provided in json format for programmatic consumption 
+"""
+def chassisIdent(host, args, session):
+    if(args.identcmd == 'on'):
+        print("Attempting to turn identify light on...:")
+        url="https://"+host+"/xyz/openbmc_project/led/physical/id/attr/State"
+        httpHeader = {'Content-Type':'application/json',}
+        data = '{"data":"xyz.openbmc_project.Led.Physical.Action.On"}'
+        res = session.put(url, headers=httpHeader, data=data, verify=False, timeout=20)
+        return res.text
+    elif(args.identcmd == 'off'):
+        print("Attempting to turn identify light off...:")
+        url="https://"+host+"/xyz/openbmc_project/led/physical/id/attr/State"
+        httpHeader = {'Content-Type':'application/json'}
+        data = '{"data":"xyz.openbmc_project.Led.Physical.Action.Off"}'
+        res = session.put(url, headers=httpHeader, data=data, verify=False, timeout=20)
+        return res.text
+    elif(args.identcmd == 'blink'):
+        print("Attempting to turn identify light off...:")
+        url="https://"+host+"/xyz/openbmc_project/led/physical/id/attr/State"
+        httpHeader = {'Content-Type':'application/json'}
+        data = '{"data":"xyz.openbmc_project.Led.Physical.Action.blink"}'
+        res = session.put(url, headers=httpHeader, data=data, verify=False, timeout=20)
+        return res.text
+    elif(args.identcmd == 'status'):
+        url="https://"+host+"//xyz/openbmc_project/led/physical/id/attr/State "
+        httpHeader = {'Content-Type':'application/json'}
+#         print(url)
+        res = session.get(url, headers=httpHeader, verify=False, timeout=20)
+        return res.text
+    else:
+        return "Invalid chassis identify command"
+"""
+     Collects all data needed for service from the BMC
+       
+     @param host: string, the hostname or IP address of the bmc
+     @param args: contains additional arguments used by the collectServiceData sub command
+     @param session: the active session to use
+     @param args.json: boolean, if this flag is set to true, the output will be provided in json format for programmatic consumption 
+"""
+def collectServiceData(host, args, session):
+    #Collect Inventory
+    args.silent = True
+    myDir = '/tmp/' + host + "--" + datetime.datetime.now().strftime("%Y-%m-%d %H.%M.%S")
+    os.makedirs(myDir)
+    filelist = []
+    frulist = fruPrint(host, args, session)
+    with open(myDir +'/inventory.txt', 'w') as f:
+        f.write(frulist)
+    print("Inventory collected and stored in " + myDir + "/inventory.txt")
+    filelist.append(myDir+'/inventory.txt')
+    
+    sensorReadings = sensor(host, args, session)
+    with open(myDir +'/sensorReadings.txt', 'w') as f:
+        f.write(sensorReadings)
+    print("Sensor readings collected and stored in " +myDir + "/sensorReadings.txt")
+    filelist.append(myDir+'/sensorReadings.txt')
+    
+    
+    url="https://"+host+"/xyz/openbmc_project/led/enumerate"
+    httpHeader = {'Content-Type':'application/json'}
+    leds = session.get(url, headers=httpHeader, verify=False, timeout=20)
+    with open(myDir +'/ledStatus.txt', 'w') as f:
+        f.write(leds.text)
+    print("System LED status collected and stored in "+myDir +"/ledStatus.txt")
+    filelist.append(myDir+'/ledStatus.txt')
+    
+    
+    sels = selPrint(host,args,session)
+    with open(myDir +'/SELshortlist.txt', 'w') as f:
+        f.write(str(sels))
+    print("sel short list collected and stored in "+myDir +"/SELshortlist.txt")
+    filelist.append(myDir+'/SELshortlist.txt')
+    
+    d = vars(args)
+    d['json'] = True
+    d['fullSel'] = True
+    parsedfullsels = json.loads(selPrint(host, args, session))
+    d['fullEsel'] = True
+    sortedSELs = sortSELs(parsedfullsels)
+    with open(myDir +'/parsedSELs.txt', 'w') as f:
+        for log in sortedSELs[0]:
+            esel = ""
+            parsedfullsels[sortedSELs[1][str(log)]]['timestamp'] = datetime.datetime.fromtimestamp(int(parsedfullsels[sortedSELs[1][str(log)]]['timestamp']/1000)).strftime("%Y-%m-%d %H:%M:%S")
+            if ('raweSEL' in parsedfullsels[sortedSELs[1][str(log)]] and args.devdebug):
+                esel = parsedfullsels[sortedSELs[1][str(log)]]['raweSEL'] 
+                del parsedfullsels[sortedSELs[1][str(log)]]['raweSEL'] 
+            f.write(json.dumps(parsedfullsels[sortedSELs[1][str(log)]],sort_keys=True, indent=4, separators=(',', ': ')))
+            if(args.devdebug and esel != ""):
+                f.write(parseESEL(args, esel))
+    print("fully parsed sels collected and stored in "+myDir +"/parsedSELs.txt")
+    filelist.append(myDir+'/parsedSELs.txt')
+        
+    url="https://"+host+"/xyz/openbmc_project/enumerate"
+    print("Attempting to get a full BMC dump")
+    fullDump = session.get(url, headers=httpHeader, verify=False, timeout=120)
+    with open(myDir +'/bmcFullRaw.txt', 'w') as f:
+        f.write(fullDump.text)
+    print("RAW BMC data collected and dumped into "+myDir +"/bmcFullRaw.txt")
+    filelist.append(myDir+'/bmcFullRaw.txt')
+    
+    
+    filename = myDir.split('/tmp/')[-1] + '.zip'
+    zf = zipfile.ZipFile(myDir+'/' + filename, 'w')
+    for myfile in filelist:
+        zf.write(myfile, os.path.basename(myfile))
+    zf.close()
+#     shutil.make_archive(myDir +'/'+ filename, 'zip', myDir)
+    
+    return "data collection complete"
+"""
+     handles various bmc level commands, currently bmc rebooting
+       
+     @param host: string, the hostname or IP address of the bmc
+     @param args: contains additional arguments used by the bmc sub command
+     @param session: the active session to use
+     @param args.json: boolean, if this flag is set to true, the output will be provided in json format for programmatic consumption 
 """         
 def bmc(host, args, session):
     if(args.info):
-        print("to be completed")
+        return "To be completed"
     if(args.type is not None):
-        bmcReset(host, args, session)
+        return bmcReset(host, args, session)
+    
 """
      controls resetting the bmc. warm reset reboots the bmc, cold reset removes the configuration and reboots. 
        
      @param host: string, the hostname or IP address of the bmc
-     @param args: contains additional arguments used by the fru sub command
+     @param args: contains additional arguments used by the bmcReset sub command
      @param session: the active session to use
      @param args.json: boolean, if this flag is set to true, the output will be provided in json format for programmatic consumption 
 """ 
@@ -467,11 +930,11 @@ def bmcReset(host, args, session):
         httpHeader = {'Content-Type':'application/json'}
         data = '{"data":"xyz.openbmc_project.State.BMC.Transition.Reboot"'
         res = session.post(url, headers=httpHeader, data=data, verify=False, timeout=20)
-        print(res.text)
+        return res.text
     elif(args.type =="cold"):
-        print("cold reset not available at this time.")
+        return "cold reset not available at this time."
     else:
-        print("invalid command")
+        return "invalid command"
 """
      creates the parser for the command line along with help for each command and subcommand
        
@@ -486,6 +949,8 @@ def createCommandParser():
     group.add_argument("-A", "--askpw", action='store_true', help='prompt for password')
     group.add_argument("-P", "--PW", help='Provide the password in-line')
     parser.add_argument('-j', '--json', action='store_true', help='output json data only')
+    parser.add_argument('-t', '--policyTableLoc', help='The location of the policy table to parse alerts')
+    parser.add_argument('-c', '--CerFormat', action='store_true', help=argparse.SUPPRESS)
     subparsers = parser.add_subparsers(title='subcommands', description='valid subcommands',help="sub-command help")
     
     #fru command
@@ -523,6 +988,8 @@ def createCommandParser():
     
     #sel print
     sel_print = sel_subparser.add_parser("print", help="prints out a list of all sels in a condensed list")
+    sel_print.add_argument('-d', '--devdebug', action='store_true', help=argparse.SUPPRESS)
+    sel_print.add_argument('-v', '--berbose', action='store_true', help="Changes the output to being very verbose")
     sel_print.set_defaults(func=selPrint)
     #sel list
     sel_list = sel_subparser.add_parser("list", help="Lists all SELs in the platform. Specifying a specific number will pull all the details for that individual SEL")
@@ -536,6 +1003,10 @@ def createCommandParser():
     sel_clear = sel_subparser.add_parser("clear", help="Clears all entries from the SEL")
     sel_clear.set_defaults(func=selClear)
     
+    sel_setResolved = sel_subparser.add_parser("resolve", help="Sets the sel entry to resolved")
+    sel_setResolved.add_argument('selNum', type=int, help="the number of the SEL entry to resolve")
+    sel_setResolved.set_defaults(func=selSetResolved)
+    
     parser_chassis = subparsers.add_parser("chassis", help="Work with chassis power and status")
     chas_sub = parser_chassis.add_subparsers(title='subcommands', description='valid subcommands',help="sub-command help")
     
@@ -546,12 +1017,22 @@ def createCommandParser():
     parser_chasPower.add_argument('powcmd',  choices=['on','off', 'status'], help='The value for the power command. on, off, or status')
     parser_chasPower.set_defaults(func=chassisPower)
     
-    #esel command
-    esel_parser = subparsers.add_parser("esel", help ="Work with an ESEL entry")
-    esel_subparser = esel_parser.add_subparsers(title='subcommands', description='valid SEL actions', help = 'valid SEL actions')
-    esel_get = esel_subparser.add_parser("get", help="Gets the details of an ESEL entry")
-    esel_get.add_argument('selNum', type=int, help="the number of the SEL entry to get")
-    esel_get.set_defaults(func=getESEL)
+    #control the chassis identify led
+    parser_chasIdent = chas_sub.add_parser("identify", help="Control the chassis identify led")
+    parser_chasIdent.add_argument('identcmd', choices=['on', 'off', 'blink', 'status'], help='The control option for the led: on, off, blink, status')
+    parser_chasPower.set_defaults(func=chassisIdent)
+    
+    #collect service data
+    parser_servData = subparsers.add_parser("collect_service_data", help="Collect all bmc data needed for service")
+    parser_servData.add_argument('-d', '--devdebug', action='store_true', help=argparse.SUPPRESS)
+    parser_servData.set_defaults(func=collectServiceData)
+    
+    #esel command ###notused###
+#     esel_parser = subparsers.add_parser("esel", help ="Work with an ESEL entry")
+#     esel_subparser = esel_parser.add_subparsers(title='subcommands', description='valid SEL actions', help = 'valid SEL actions')
+#     esel_get = esel_subparser.add_parser("get", help="Gets the details of an ESEL entry")
+#     esel_get.add_argument('selNum', type=int, help="the number of the SEL entry to get")
+#     esel_get.set_defaults(func=getESEL)
     
     
     parser_bmc = subparsers.add_parser('bmc', help="Work with the bmc")
@@ -602,7 +1083,8 @@ def main(argv=None):
     if (args.json):
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
     mysess = login(args.host, args.user, pw, args.json)
-    args.func(args.host, args, mysess)
+    output = args.func(args.host, args, mysess)
+    print(output)
     logout(args.host, args.user, pw, mysess, args.json)       
 
 

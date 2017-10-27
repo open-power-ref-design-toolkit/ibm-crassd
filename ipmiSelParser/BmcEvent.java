@@ -24,6 +24,7 @@ public class BmcEvent {
     String eventType;
     String vmMigration;
     String subSystem;
+    String compInstance;
     String userAction;
     String timestamp;
     
@@ -177,7 +178,18 @@ public class BmcEvent {
     public void setSubSystem(String subSystem) {
         this.subSystem = subSystem;
     }
-
+    /**
+     * @return the compInstance
+     */
+    public String getCompInstance() {
+        return subSystem;
+    }
+    /**
+     * @param compInstance the compInstance to set
+     */
+    public void setCompInstance(String compInstance) {
+        this.compInstance = compInstance;
+    }
     /**
      * @return the userAction
      */
@@ -209,6 +221,7 @@ public class BmcEvent {
                 "\t\"vmMigration\": \""+vmMigration+"\",\n" +
                 "\t\"subSystem\": \""+subSystem+"\",\n" +
                 "\t\"timestamp\": \""+timestamp+"\",\n" +
+                "\t\"compInstance\": \""+compInstance+"\",\n" +
                 "\t\"userAction\": \""+userAction + "\"" +
                 "\n}";
         return json;

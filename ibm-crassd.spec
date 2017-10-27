@@ -1,7 +1,8 @@
 # Copyright (c) 2017 International Business Machines.  All right reserved.
+%define _binaries_in_noarch_packages_terminate_build   0
 Summary: IBM POWER LC Cluster RAS Service Package
 Name: ibm-crassd
-Version: 0.5
+Version: 0.6
 Release: 1
 License: BSD
 Group: System Environment/Base
@@ -17,6 +18,8 @@ Requires: java >= 1.7.0
 Requires: python >= 2.7.5
 Requires: python-requests
 Requires: python-configparser
+Requires: PyYAML
+Requires: python-webpy
 
 %if 0%{?_unitdir:1}
 Requires(post): systemd-units
@@ -45,12 +48,14 @@ export DESTDIR=$RPM_BUILD_ROOT/opt/ibm/ras
 mkdir -p $DESTDIR/bin
 mkdir -p $DESTDIR/etc
 mkdir -p $DESTDIR/lib
-mkdir -p $RPM_BUILD_ROOT/etc/systemd/system
+mkdir -p $RPM_BUILD_ROOT/usr/lib/systemd/system
 %{__make} install
 
 cp ibmhwmonitor/*.py openbmctool/*.py $DESTDIR/bin
 cp ibmhwmonitor/ibmpowerhwmon.config $DESTDIR/etc
-cp ibmhwmonitor/ibmpowerhwmon.service $RPM_BUILD_ROOT/etc/systemd/system
+cp ibmhwmonitor/ibmpowerhwmon.service $RPM_BUILD_ROOT/usr/lib/systemd/system
+cp openbmctool/*.yml $DESTDIR/lib
+cp errl/hbotStringFile $DESTDIR/lib
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -58,11 +63,12 @@ rm -rf $RPM_BUILD_ROOT
 %files
 %defattr(-,root,root,-)
 /opt/ibm/ras/lib/crassd.jar
-#will likely put the policyTable.yml into lib...
 /opt/ibm/ras/etc/ibmpowerhwmon.config
 /opt/ibm/ras/bin/ibmpowerhwmon.py
 /opt/ibm/ras/bin/openbmctool.py
-/etc/systemd/system/ibmpowerhwmon.service
+/opt/ibm/ras/lib/policyTable.yml
+/opt/ibm/ras/lib/hbotStringFile
+/usr/lib/systemd/system/ibmpowerhwmon.service
 
 %post
 #%systemd_post ibmpowerhwmon.service

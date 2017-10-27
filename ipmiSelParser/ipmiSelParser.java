@@ -85,9 +85,8 @@ public class ipmiSelParser {
             reader = new BufferedReader(new InputStreamReader(inputStream));
             p.waitFor(60, TimeUnit.SECONDS);
             String line;
-            while((line = error.readLine()) != null)
-            {
-                System.out.println(line);
+            if(!reader.ready()){
+                return error;
             }
 //System.out.println("Import Complete");
         }
@@ -145,22 +144,134 @@ public class ipmiSelParser {
             while((line = selList.readLine()) != null){
                 
                 BmcEvent cerEvent;
-                String[] selPieces = formatSEL(line);
-                String dateTime = selPieces[BmcEvent.DATE_LOC].trim() +" " + selPieces[BmcEvent.TIME_LOC].trim();
-                DateFormat df = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss");
-                Date parsedTS = df.parse(dateTime);
-                String unixTimestamp = Long.toString(parsedTS.getTime()/1000);
-                String mapKey = getMapKey(selPieces, lookupEvents);
-                Map eventAttr = null;
-                eventAttr = (lookupEvents.get(mapKey));
-                if (eventAttr != null){
-                    cerEvent = createCEREventFromMap(eventAttr);
-                    cerEvent.setTimestamp(unixTimestamp);
-                    //System.out.println(cerEvent.getSensor() + cerEvent.getState());
-                    System.out.println("\t\"event" + alertCount+ "\":" + cerEvent.toJSON() + ",");
+                if(line.contains("Error: Unable to establish IPMI v2 / RMCP+ session")){
+                    System.out.println("\t\"event" + alertCount+ "\":{\n"+
+                            "\t\t\"CerID\": \"FQPSPIN0001M\",\n"+
+                            "\t\t\"sensor\": \"N/A\",\n"+
+                            "\t\t\"state\": \"N/A\",\n" +
+                            "\t\t\"additonalDetails\": \"Error: Unable to establish IPMI v2 / RMCP+ session\",\n" +
+                            "\t\t\"message\": \"Connection Error. View additional details for more information\",\n" +
+                            "\t\t\"serviceable\": \"Yes\",\n" +
+                            "\t\t\"callHome\": \"No\",\n" +
+                            "\t\t\"severity\": \"Critical\",\n" +
+                            "\t\t\"eventType\": \"Communication Failure/Timeout\",\n" +
+                            "\t\t\"vmMigration\": \"Yes\",\n" +
+                            "\t\t\"subSystem\": \"Interconnect (Networking)\",\n" +
+                            "\t\t\"timestamp\": \""+(System.currentTimeMillis()/1000L)+"\",\n" +
+                            "\t\t\"userAction\": \"Correct the issue highlighted in additional details and try again\"" +
+                            "\n\t},");
                 }
-                else{
-                    System.out.println("\t\"event"+ alertCount+ "\":" + "{\n\t\"error\": \"Could not find: " + mapKey+ "\" \n},");
+                else if(line.contains("Address lookup for") && line.contains("failed")){
+                    System.out.println("\t\"event" + alertCount+ "\":{\n"+
+                            "\t\t\"CerID\": \"FQPSPIN0002M\",\n"+
+                            "\t\t\"sensor\": \"N/A\",\n"+
+                            "\t\t\"state\": \"N/A\",\n" +
+                            "\t\t\"additonalDetails\": \"N/A\",\n" +
+                            "\t\t\"message\": \"BMC Address lookup failed.\",\n" +
+                            "\t\t\"serviceable\": \"Yes\",\n" +
+                            "\t\t\"callHome\": \"No\",\n" +
+                            "\t\t\"severity\": \"Critical\",\n" +
+                            "\t\t\"eventType\": \"Communication Failure/Timeout\",\n" +
+                            "\t\t\"vmMigration\": \"Yes\",\n" +
+                            "\t\t\"subSystem\": \"Interconnect (Networking)\",\n" +
+                            "\t\t\"timestamp\": \""+(System.currentTimeMillis()/1000L)+"\",\n" +
+                            "\t\t\"userAction\": \"Correct the issue highlighted in additional details and try again\"" +
+                            "\n\t},");
+                }
+                else if(line.contains("Error: Unable to establish LAN session")){
+                    System.out.println("\t\"event" + alertCount+ "\":{\n"+
+                            "\t\t\"CerID\": \"FQPSPIN0003M\",\n"+
+                            "\t\t\"sensor\": \"N/A\",\n"+
+                            "\t\t\"state\": \"N/A\",\n" +
+                            "\t\t\"additonalDetails\": \"N/A\",\n" +
+                            "\t\t\"message\": \"Unable to establish LAN session with BMC.\",\n" +
+                            "\t\t\"serviceable\": \"Yes\",\n" +
+                            "\t\t\"callHome\": \"No\",\n" +
+                            "\t\t\"severity\": \"Critical\",\n" +
+                            "\t\t\"eventType\": \"Communication Failure/Timeout\",\n" +
+                            "\t\t\"vmMigration\": \"Yes\",\n" +
+                            "\t\t\"subSystem\": \"Interconnect (Networking)\",\n" +
+                            "\t\t\"timestamp\": \""+(System.currentTimeMillis()/1000L)+"\",\n" +
+                            "\t\t\"userAction\": \"Ensure the BMC is connected to the network and is pingable\"" +
+                            "\n\t},");
+                }
+                else if(line.contains("Authentication type NONE not supported")){
+                    System.out.println("\t\"event" + alertCount+ "\":{\n"+
+                            "\t\t\"CerID\": \"FQPSPSE0004M\",\n"+
+                            "\t\t\"sensor\": \"N/A\",\n"+
+                            "\t\t\"state\": \"N/A\",\n" +
+                            "\t\t\"additonalDetails\": \"N/A\",\n" +
+                            "\t\t\"message\": \"Authentication Error. Ensure your bmc supports ipmi.\",\n" +
+                            "\t\t\"serviceable\": \"Yes\",\n" +
+                            "\t\t\"callHome\": \"No\",\n" +
+                            "\t\t\"severity\": \"Critical\",\n" +
+                            "\t\t\"eventType\": \"Security\",\n" +
+                            "\t\t\"vmMigration\": \"Yes\",\n" +
+                            "\t\t\"subSystem\": \"Systems Management: Security\",\n" +
+                            "\t\t\"timestamp\": \""+(System.currentTimeMillis()/1000L)+"\",\n" +
+                            "\t\t\"userAction\": \"Ensure the BMC supports IPMI. Ensure the credentials provided are correct.\"" +
+                            "\n\t},");
+                }
+                else if(line.contains("SEL has no entries")){
+                    continue;
+                }
+                /*
+                else if(line.contains("test")){
+                    System.out.println("\t\"event" + alertCount+ "\":{\n"+
+                            "\t\t\"CerID\": \"FQPSPIN0000M\",\n"+
+                            "\t\t\"sensor\": \"N/A\",\n"+
+                            "\t\t\"state\": \"N/A\",\n" +
+                            "\t\t\"additonalDetlails\": \"N/A\",\n" +
+                            "\t\t\"message\": \"Connection timed out. Ensure you have network connectivity to the BMC\",\n" +
+                            "\t\t\"serviceable\": \"Yes\",\n" +
+                            "\t\t\"callHome\": \"No\",\n" +
+                            "\t\t\"severity\": \"Critical\",\n" +
+                            "\t\t\"eventType\": \"Communication Failure/Timeout\",\n" +
+                            "\t\t\"vmMigration\": \"Yes\",\n" +
+                            "\t\t\"subSystem\": \"Interconnect (Networking)\",\n" +
+                            "\t\t\"timestamp\": \""+(System.currentTimeMillis()/1000L)+"\",\n" +
+                            "\t\t\"userAction\": \"Verify network connectivity between the two systems and the bmc is functional.\"" +
+                            "\t\n}, \n" +
+                            "\t\"numAlerts\": \"1\" \n}");
+                
+                }*/
+                else if(line.contains("|")){
+                        //Contains normal SEL entries
+                        String[] selPieces = formatSEL(line);
+                        String dateTime = selPieces[BmcEvent.DATE_LOC].trim() +" " + selPieces[BmcEvent.TIME_LOC].trim();
+                        DateFormat df = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss");
+                        Date parsedTS = df.parse(dateTime);
+                        String unixTimestamp = Long.toString(parsedTS.getTime()/1000);
+                        String mapKey = getMapKey(selPieces, lookupEvents);
+                        Map eventAttr = null;
+                        eventAttr = (lookupEvents.get(mapKey));
+                        if (eventAttr != null){
+                            cerEvent = createCEREventFromMap(eventAttr);
+                            cerEvent.setTimestamp(unixTimestamp);
+                            //System.out.println(cerEvent.getSensor() + cerEvent.getState());
+                            System.out.println("\t\"event" + alertCount+ "\":" + cerEvent.toJSON() + ",");
+                        }
+                        else{
+                            System.out.println("\t\"event"+ alertCount+ "\":" + "{\n\t\"error\": \"Could not find: " + mapKey+ "\" \n},");
+                        }
+                    }
+                else{ //ipmitool error
+                    //System.out.println("\t\"event"+ alertCount+ "\":" + "{\n\t\"error\": \"Could not find: " + line.trim().replace("\t", " ")+ "\" \n},");
+                    System.out.println("\t\"event" + alertCount+ "\":{\n"+
+                            "\t\t\"CerID\": \"FQPSPCR0020M\",\n"+
+                            "\t\t\"sensor\": \"N/A\",\n"+
+                            "\t\t\"state\": \"N/A\",\n" +
+                            "\t\t\"additonalDetlails\": \""+line.trim().replace("\t", " ")+"\",\n" +
+                            "\t\t\"message\": \"IPMI tool encountered an error. See Additional Details\",\n" +
+                            "\t\t\"serviceable\": \"Yes\",\n" +
+                            "\t\t\"callHome\": \"No\",\n" +
+                            "\t\t\"severity\": \"Critical\",\n" +
+                            "\t\t\"eventType\": \"Firmware/Software Failure \",\n" +
+                            "\t\t\"vmMigration\": \"No\",\n" +
+                            "\t\t\"subSystem\": \"Systems Management: Core / Virtual Appliance\",\n" +
+                            "\t\t\"timestamp\": \""+(System.currentTimeMillis()/1000L)+"\",\n" +
+                            "\t\t\"userAction\": \"Ensure the BMC supports IPMI. Ensure the BMC is in a functional state and try again.\"" +
+                            "\n\t},");
                 }
                 alertCount++;
             }
@@ -202,6 +313,7 @@ public class ipmiSelParser {
         newEvent.setEventType(eventMap.get("EventType").toString());
         newEvent.setVmMigration(eventMap.get("VMMigrationFlag").toString());
         newEvent.setSubSystem(eventMap.get("AffectedSubsystem").toString());
+        newEvent.setCompInstance(eventMap.get("ComponentInstance").toString());
         newEvent.setUserAction(eventMap.get("UserAction").toString());
         return newEvent;
     }
