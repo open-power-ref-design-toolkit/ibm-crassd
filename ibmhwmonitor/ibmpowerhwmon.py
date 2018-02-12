@@ -31,131 +31,49 @@ except ImportError:
 import subprocess
 import json
 import math
+import config
+from config import *
+import imp
 
-"""
-     Used to handle kill signals from the operating system
-       
-     @param signum: integer, the signal number received from the os
-     @param frame; contextual frame
-     @return: set global kill now to true and lead to termination
-""" 
 def sigHandler(signum, frame):
+    """
+         Used to handle kill signals from the operating system
+           
+         @param signum: integer, the signal number received from the os
+         @param frame; contextual frame
+         @return: set global kill now to true and lead to termination
+    """ 
     if (signum == signal.SIGTERM or signum == signal.SIGINT):
         print("Termination signal received.")
         global killNow
         killNow = True
+    elif(signum == signal.SIGUSR1):
+        print("Queue size: " + str(nodes2poll.qsize()))
     else:
         print("Signal received" + signum)
         
 #setup the interrupt to handle SIGTERM, SIGINT
 signal.signal(signal.SIGTERM, sigHandler)
 signal.signal(signal.SIGINT, sigHandler)
+signal.signal(signal.SIGUSR1, sigHandler)
 
-"""
-     Used to handle kill signals from the operating system
-       
-     @param severity: the severity of the syslog entry to create
-     @param message: string, the message to post in the syslog
-"""
+
 def errorHandler(severity, message):
+    """
+         Used to handle creating entries in the system log for this service
+           
+         @param severity: the severity of the syslog entry to create
+         @param message: string, the message to post in the syslog
+    """
     print("Creating syslog entry")
     syslog.openlog(ident="IBMPowerHWMonitor", logoption=syslog.LOG_PID|syslog.LOG_NOWAIT)
     syslog.syslog(severity, message)    
 
-"""
-     sends alert to mmhealth
-       
-     @param cerEvent: dict, the cerEvent to send
-     @param impactedNode; the node that had the alert
-     @param entityAttr: dictionary, contains the list of known attributes for the entity to report to
-"""    
-def notifymmhealth(cerEvent, impactedNode, entityAttr):
-    mmHealthDown = entityAttr['mmhealth']['receiveEntityDown']
-    eventsToReportList = ["FQPSPPW0006M","FQPSPPW0019I","FQPSPPW0007M","FQPSPPW0016I","FQPSPPW0008M","FQPSPPW0020I",
-                          "FQPSPPW0009M","FQPSPPW0017I","FQPSPPW0010M","FQPSPPW0021I","FQPSPPW0011M","FQPSPPW0018M"]
-    eventsToReportList.sort()
-    if os.path.exists('/usr/lpp/mmfs/bin/mmsysmonc'):
-        if(cerEvent['CerID'] in eventsToReportList):
-            proc = subprocess.Popen(['/usr/lpp/mmfs/bin/mmsysmonc', 'event', 'powerhw', cerEvent['CerID'], cerEvent['compInstance'], impactedNode], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-            result = proc.communicate()[0]
-            
-            if mmHealthDown:
-                with lock:
-                    entityAttr['mmhealth']['receiveEntityDown'] = False
-                
-            if "Event "+ cerEvent['CerID'] + " raised" in result:
-                return True
-            else: 
-                return False
-        else:
-            return True
-    else:
-        errorHandler(syslog.LOG_CRIT, "Unable to find mmsysmonc. Ensure the utility is installed properly and part of the PATH")
-        if not mmHealthDown:
-            with lock:
-                entityAttr['mmhealth']['receiveEntityDown'] = True
-    
-    return False
-
-"""
-     sends alert to CSM
-       
-     @param cerEvent: dict, the cerEvent to send
-     @param impactedNode; the node that had the alert
-     @param entityAttr: dictionary, contains the list of known attributes for the entity to report to
-     @return: True if notification was successful, false if it was unable to send the alert
-"""
-def notifyCSM(cerEvent, impactedNode, entityAttr):
-    httpHeader = {'Content-Type':'application/json'}
-    failedFirstFlag = entityAttr['csm']['failedFirstTry']
-    csmDown = entityAttr['csm']['receiveEntityDown']
-    if(cerEvent['serviceable'] == 'No'):
-        return True
-    if(failedFirstFlag == False):
-        msgID = "bmc." + "".join(cerEvent['eventType'].split()) + "." + cerEvent['CerID']
-        eventEntry = {'msg_id': msgID, 'location_name':impactedNode, 'time_stamp':datetime.datetime.fromtimestamp(int(cerEvent['timestamp'])).strftime("%Y-%m-%d %H:%M:%S"),
-                      "raw_data": "serviceable:"+ cerEvent['serviceable'] + " || subsystem: "+ cerEvent['subSystem'] }
-    else:
-        msgID = "bmc.Firmware/SoftwareFailure.FQPSPEM0003G"
-        eventEntry = {'msg_id': msgID, 'location_name':impactedNode, 'time_stamp':time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
-                      "raw_data":(cerEvent['CerID'] + "|| "+cerEvent['message']+"|| serviceable:"+ cerEvent['serviceable']+ "|| severity: "+ 
-                                  cerEvent['severity'])}
-    if("additionalDetails" in cerEvent):
-        eventEntry['raw_data'] = eventEntry['raw_data'] + cerEvent['sensor'] + " || " + cerEvent['state'] + " || " + cerEvent['additionalDetails']
-    try:
-        r = requests.post('http://127.0.0.1:5555/csmi/V1.0/ras/event/create', headers=httpHeader, data=json.dumps(eventEntry), timeout=30)
-        if (r.status_code != 200):
-#             if csmDown == False:
-#                 errorHandler(syslog.LOG_ERR, "Unable to forward HW event to CSM: "+ msgID )
-#                 csmDown = True;
-#             print(r.raise_for_status()) 
-            with lock:
-                entityAttr['csm']['receiveEntityDown'] = False
-            return False
-        else:
-            print("Successfully reported to CSM: " + msgID)
-            if csmDown == True:
-                with lock:
-                    entityAttr['csm']['receiveEntityDown']=False
-            return True
-    except(requests.exceptions.Timeout):
-        if csmDown == False:
-            errorHandler(syslog.LOG_ERR, "Connection Timed out connecting to csmrestd system service. Ensure the service is running")
-            with lock:
-                entityAttr['csm']['receiveEntityDown'] = True;
-        return False
-    except(requests.exceptions.ConnectionError) as err:
-        if csmDown == False:
-            errorHandler(syslog.LOG_ERR, "Encountered an error connecting to csmrestd system service. Ensure the service is running. Error: " + str(err))
-            with lock:
-                entityAttr['csm']['receiveEntityDown'] = True;
-        return False   
-
-
+  
 def updateEventDictionary(eventsDict):
     newEventsDict = {}
-    commonEvent = {}
     for key in eventsDict:
+        commonEvent = {}
         if("numAlerts" in key):
             newEventsDict[key] = eventsDict[key]
         elif(type(eventsDict[key]) is not dict):
@@ -174,22 +92,62 @@ def updateEventDictionary(eventsDict):
                 commonEvent['vmMigration'] = eventsDict[key]['VMMigrationFlag']
                 commonEvent['subSystem'] = eventsDict[key]['AffectedSubsystem']
                 commonEvent['userAction'] = eventsDict[key]['UserAction']
-                commonEvent['timestamp'] = str(int(eventsDict[key]['timestamp'])/1000)
+                commonEvent['timestamp'] = str(int(int(eventsDict[key]['timestamp'])/1000))
                 newEventsDict[key] = commonEvent
             except KeyError:
-                print (eventsDict[key])
-                print (KeyError)
+                print (key +' not found in events dictionary')
+                exc_type, exc_obj, exc_tb = sys.exc_info()
+                fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                print ("exception: ", exc_type, fname, exc_tb.tb_lineno)
+#                 sys.stdout.flush()
                 
     return newEventsDict
 
-"""
-     processes alerts and is run in child threads
-"""     
+
+def updateBMCLastReports():
+    """
+         update the bmc ini file to record last log reported
+    """ 
+    global killNow
+    confParser = configparser.ConfigParser()
+    if os.path.exists('/opt/ibm/ras/etc/bmclastreports.ini'):
+        try: 
+            confParser.read('/opt/ibm/ras/etc/bmclastreports.ini')
+        except Exception as e:
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print ("exception: ", exc_type, fname, exc_tb.tb_lineno)
+    while True:
+        if killNow: break
+        #node contains {entity: entName, bmchostname: bmchostname, lastlogtime: timestamp, dupTimeIDList: [ID1, ID2]  
+#         if not updateConfFile.empty(): 
+        node = updateConfFile.get()
+        
+
+        if len(node['dupTimeIDList']) >= 1:
+            tmpList = []
+            for cerid in node['dupTimeIDList']:
+                tmpList.append(str(cerid))
+            node['dupTimeIDList'] = tmpList
+        data2write = {'lastLogTime': str(node['lastLogTime']), 'dupTimeIDList': node['dupTimeIDList']}
+        if node['entity']+'_bmcs' not in confParser:
+            confParser[node['entity']+'_bmcs'] = {}
+        confParser[node['entity']+'_bmcs'][node['bmchostname']] = str(data2write)
+        with open('/opt/ibm/ras/etc/bmclastreports.ini', 'w') as configfile:
+            confParser.write(configfile)
+        
+        updateConfFile.task_done()
+        
+   
 def BMCEventProcessor():
+    """
+         processes alerts and is run in child threads
+    """  
     eventsDict = {};
     global notifyList
     global killNow
     global networkErrorList
+    updateNotifyTimes = False
     while True:
         nodeCommsLost = False
         if killNow: 
@@ -199,30 +157,43 @@ def BMCEventProcessor():
             name = threading.currentThread().getName()
             bmcHostname = node['bmcHostname']
             impactednode = node['xcatNodeName']
+            username = node['username']
+            password = node['password']
             try:
                 print(name +": " + bmcHostname)
+#                 sys.stdout.flush()
                 if(node['accessType']=="openbmcRest"):
-                    proc = subprocess.Popen(['python', '/opt/ibm/ras/bin/openbmctool.py', '-H', bmcHostname, '-U', 'root', '-P', '0penBmc','-j','-t','/opt/ibm/ras/lib/policyTable.yml', 'sel', 'print'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-                    eventList = proc.communicate()[0]
+#                     proc = subprocess.Popen(['python', '/opt/ibm/ras/bin/openbmctool.py', '-H', bmcHostname, '-U', 'root', '-P', '0penBmc','-j','-t','/opt/ibm/ras/lib/policyTable.yml', 'sel', 'print'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+#                     eventList = str(proc.communicate()[0])
+                    try:
+                        eventBytes = subprocess.check_output(['python', '/opt/ibm/ras/bin/openbmctool.py', '-H', bmcHostname, '-U', username, '-P', password,'-j','-t','/opt/ibm/ras/lib/policyTable.json', 'sel', 'print'])
+                        eventList = eventBytes.decode('utf-8')
+                    except subprocess.CalledProcessError as e:
+                        print(e.output)
+                    
                     if eventList.find('{') != -1: #check for valid response
                         eventList = eventList[eventList.index('{'):]
                     else:
                         print('unable to get list of events from bmc')
                         print(eventList)
+#                         sys.stdout.flush()
                         continue
                     eventsDict = json.loads(eventList)
                     eventsDict = updateEventDictionary(eventsDict)
                 elif(node['accessType']=="ipmi"):
-                    proc= subprocess.Popen(['java', '-jar', '/opt/ibm/ras/lib/crassd.jar', bmcHostname, "ADMIN", 'ADMIN'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-                    eventList = proc.communicate()[0]
+#                     proc= subprocess.Popen(['java', '-jar', '/opt/ibm/ras/lib/crassd.jar', bmcHostname, "ADMIN", 'ADMIN'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+#                     eventList = str(proc.communicate()[0])
+                    eventList = subprocess.check_output(['java', '-jar', '/opt/ibm/ras/lib/crassd.jar', bmcHostname, username, password]).decode('utf-8')
                     if eventList.find('{') != -1: #check for valid response
                         eventList = eventList[eventList.index('{'):] #keyboard terminate causing substring not found here
                     else:
                         print('unable to get list of events from bmc')
                         print(eventList)
+#                         sys.stdout.flush()
                         continue
                     eventsDict = json.loads(eventList)
                     print("processing alerts")
+#                     sys.stdout.flush()
                 else:
                     #use redfish
                     print("redfish not supported")
@@ -259,90 +230,207 @@ def BMCEventProcessor():
                                 
                             #only report new events
                             for key in notifyList:
-                                funcName = str(notifyList[key]['function'])
-                                if(eventsDict[event]['timestamp']>notifyList[key][bmcHostname]['lastLogTime']):
-                                    if funcName in locals():
-                                        notifyList[key]['successfullyReported'] = locals()[funcName](eventsDict[event], impactednode, notifyList)
-                                    elif funcName in globals():
-                                        notifyList[key]['successfullyReported'] = globals()[funcName](eventsDict[event], impactednode, notifyList)
-                                    else:
-                                        errorHandler(syslog.LOG_ERR, "Unable to find function " +funcName)
-                                        killNow = True
-                                        break
-                                    if notifyList[key]['successfullyReported']:
+#                                 print(bmcHostname +' notifying: ' + str(key))
+                                updateNotifyTimes = False
+                                with lock:
+                                    receiveEntityStatus = notifyList[key]['receiveEntityDown']
+                                    dupList = notifyList[key][bmcHostname]['dupTimeIDList']
+                                    func = notifyList[key]['function']
+                                    notifyList[key]['failedFirstTry'] = False
+                                    lastlogtime = notifyList[key][bmcHostname]['lastLogTime']
+                                if(eventsDict[event]['timestamp']>lastlogtime):
+                                    repsuccess = func(eventsDict[event], impactednode, notifyList)
+#                                     if funcName in locals():
+#                                         repsuccess = locals()[funcName](eventsDict[event], impactednode, notifyList)
+#                                     elif funcName in globals():
+#                                         repsuccess = globals()[funcName](eventsDict[event], impactednode, notifyList)
+#                                     else:
+#                                         errorHandler(syslog.LOG_ERR, "Unable to find function " +funcName)
+#                                         killNow = True
+#                                         break
+                                    with lock:
+                                        notifyList[key]['successfullyReported'] = repsuccess
+#                                     print('Notify response:' + str(repsuccess))
+                                    if repsuccess:
                                         with lock: 
                                             notifyList[key][bmcHostname]['lastLogTime'] = eventsDict[event]['timestamp']
                                             del notifyList[key][bmcHostname]['dupTimeIDList'][:]
                                             notifyList[key][bmcHostname]['dupTimeIDList'].append(eventsDict[event]['CerID'])
+                                        updateNotifyTimes = True
                                     else:
-                                        if(notifyList[key]['receiveEntityDown'] == False):
+                                        with lock:
+                                            notifyList[key]['failedFirstTry'] = True
+                                            receiveEntityStatus = notifyList[key]['receiveEntityDown']
+                                        if(receiveEntityStatus== False):
                                             with lock:
-                                                if funcName in locals():
-                                                    notifyList[key]['successfullyReported'] = locals()[funcName](eventsDict[event], impactednode, True)
-                                                elif funcName in globals():
-                                                    notifyList[key]['successfullyReported'] = globals()[funcName](eventsDict[event], impactednode, True)
-                                                else:
-                                                    errorHandler(syslog.LOG_ERR, "Unable to find function " +funcName)
-                                                    killNow = True
-                                                    break
-                                            if(notifyList[key]['successfullyReported'] == False):
-                                                errorHandler(syslog.LOG_ERR, "Unable to forward HW event to "+key+': ' + event['CerID'] )
+                                                func = notifyList[key]['function']
+                                            repsuccess = func(eventsDict[event], impactednode, notifyList)
+                                            
+#                                             with lock:
+#                                                 funcName = str(notifyList[key]['function'])
+# #                                             
+#                                             if funcName in locals():
+#                                                 repsuccess = locals()[funcName](eventsDict[event], impactednode, notifyList)
+#                                             elif funcName in globals():
+#                                                 repsuccess = globals()[funcName](eventsDict[event], impactednode, notifyList)
+#                                             else:
+#                                                 errorHandler(syslog.LOG_ERR, "Unable to find function " +funcName)
+#                                                 killNow = True
+#                                                 break
+                                            with lock:
+                                                notifyList[key]['successfullyReported'] = repsuccess 
+                                            if(repsuccess == False):
+#                                                 errorHandler(syslog.LOG_ERR, "Unable to forward HW event to "+str(key)+': ' + str(eventsDict[event]['CerID']) )
                                                 break
                                             else:
                                                 with lock: 
                                                     notifyList[key][bmcHostname]['lastLogTime'] = eventsDict[event]['timestamp']
                                                     del notifyList[key][bmcHostname]['dupTimeIDList'][:]
                                                     notifyList[key][bmcHostname]['dupTimeIDList'].append(eventsDict[event]['CerID'])
+                                                    updateNotifyTimes = True
                                         else:
                                             break
-                                elif(eventsDict[event]['timestamp'] == notifyList[key][bmcHostname]['lastLogTime']):
-                                    if(eventsDict[event]['CerID'] not in notifyList[key][bmcHostname]['dupTimeIDList']):
+                                elif(eventsDict[event]['timestamp'] == lastlogtime):
+                                    with lock:
+                                        notifyList[key]['failedFirstTry'] = False
+                                        dupList = notifyList[key][bmcHostname]['dupTimeIDList']
+                                    if(eventsDict[event]['CerID'] not in dupList):
                                         with lock:
-                                            if funcName in locals():
-                                                notifyList[key]['successfullyReported'] = locals()[notifyList[key]['function']](eventsDict[event], impactednode, False)
-                                            elif funcName in globals():
-                                                notifyList[key]['successfullyReported'] = globals()[notifyList[key]['function']](eventsDict[event], impactednode, False)
-                                            else:
-                                                errorHandler(syslog.LOG_ERR, "Unable to find function " +funcName)
-                                                killNow = True
-                                                break
-
-                                        if notifyList[key]['successfullyReported']:
+                                            func = notifyList[key]['function']
+                                        repsuccess = func(eventsDict[event], impactednode, notifyList)
+#                                             funcName = str(notifyList[key]['function'])
+#                                         if funcName in locals():
+#                                             repsuccess= locals()[funcName](eventsDict[event], impactednode, notifyList)
+#                                         elif funcName in globals():
+#                                             repsuccess = globals()[funcName](eventsDict[event], impactednode, notifyList)
+#                                         else:
+#                                             errorHandler(syslog.LOG_ERR, "Unable to find function " +funcName)
+#                                             killNow = True
+#                                             break
+                                        with lock:
+                                            notifyList[key]['successfullyReported'] = repsuccess
+                                        if repsuccess:
                                             with lock: 
                                                 notifyList[key][bmcHostname]['dupTimeIDList'].append(eventsDict[event]['CerID'])
+                                            updateNotifyTimes = True
                                         else:
-                                            if(notifyList[key]['receiveEntityDown'] == False):
+                                            with lock:
+                                                notifyList[key]['failedFirstTry'] = True
+                                                receiveEntityStatus = notifyList[key]['receiveEntityDown']
+                                            if(receiveEntityStatus == False):
                                                 with lock:
-                                                    if funcName in locals():
-                                                        notifyList[key]['successfullyReported'] = locals()[notifyList[key]['function']](eventsDict[event], impactednode, True)
-                                                    elif funcName in globals():
-                                                        notifyList[key]['successfullyReported'] = globals()[notifyList[key]['function']](eventsDict[event], impactednode, True)
-                                                    else:
-                                                        errorHandler(syslog.LOG_ERR, "Unable to find function " +funcName)
-                                                        killNow = True
-                                                        break
-                                                
-                                                if(notifyList[key]['successfullyReported'] == False):
-                                                    errorHandler(syslog.LOG_ERR, "Unable to forward HW event to "+key+': ' + event['CerID'] )
+                                                    func = notifyList[key]['function']
+                                                repsuccess = func(eventsDict[event], impactednode, notifyList)
+#                                                 with lock:
+#                                                     funcName = str(notifyList[key]['function'])
+#                                                 if funcName in locals():
+#                                                     repsuccess = locals()[funcName](eventsDict[event], impactednode, notifyList)
+#                                                 elif funcName in globals():
+#                                                     repsuccess = globals()[funcName](eventsDict[event], impactednode, notifyList)
+#                                                 else:
+#                                                     errorHandler(syslog.LOG_ERR, "Unable to find function " +funcName)
+#                                                     killNow = True
+#                                                     break
+                                                with lock:
+                                                    notifyList[key]['successfullyReported'] = repsuccess
+                                                if(repsuccess == False):
+#                                                     errorHandler(syslog.LOG_ERR, "Unable to forward HW event to "+str(key)+': ' + str(eventsDict[event]['CerID']) )
                                                     break
                                                 else:
                                                     with lock: 
                                                         notifyList[key][bmcHostname]['dupTimeIDList'].append(eventsDict[event]['CerID'])
+                                                    updateNotifyTimes = True
                                             break
-#                 reported = False               
+#                 reported = False 
+                                if updateNotifyTimes:
+                                    updateNotifyTimes = False
+                                    #node contains {entity: entName, bmchostname: bmchostname, lastlogtime: timestamp, dupTimeIDList: [ID1, ID2]     
+                                    updateNotifyTimesData = {'entity': key, 'bmchostname': bmcHostname, 'lastLogTime': notifyList[key][bmcHostname]['lastLogTime'],
+                                                              'dupTimeIDList': notifyList[key][bmcHostname]['dupTimeIDList']}
+                                    updateConfFile.put(updateNotifyTimesData)
+                                 
                 nodes2poll.task_done()
             except Exception as e:
-                tb = sys.exc_info()
-                print(str(e) + "line: ")
-                print(tb)
+                exc_type, exc_obj, exc_tb = sys.exc_info()
+                fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                print("exception: ", exc_type, fname, exc_tb.tb_lineno)
+                print(e)
+#                 sys.stdout.flush()
             eventsDict.clear()
+            
+            
+def loadBMCLastReports():
+    """
+         Loads the previously reported alerts from a configuration file
+           
+         @return: modifies global list of monitored nodes with previously reported alerts
+    """ 
+    if os.path.exists('/opt/ibm/ras/etc/bmclastreports.ini'):
+        confParser = configparser.ConfigParser()
+        global notifyList
+        try: 
+            confParser.read('/opt/ibm/ras/etc/bmclastreports.ini')
+        except Exception as e:
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print ("exception: ", exc_type, fname, exc_tb.tb_lineno)
+        try:
+            for key in notifyList:
+                bmcs = dict(confParser.items(str(key) + '_bmcs'))
+                for node in mynodelist:
+                    if node['bmcHostname'] in bmcs:
+                        bmcString = str(bmcs[node['bmcHostname']]).replace("\'", "\"")
+                        bmcs[node['bmcHostname']]= json.loads(bmcString)
+                        notifyList[key][node['bmcHostname']]['lastLogTime'] = str(bmcs[node['bmcHostname']]['lastLogTime'])
+                        notifyList[key][node['bmcHostname']]['dupTimeIDList'] = bmcs[node['bmcHostname']]['dupTimeIDList']
+        except KeyError:
+            errorHandler(syslog.LOG_ERR, "No section: bmcs in ini file. All bmc events will be forwarded to entities being notified. ")
+        except configparser.NoSectionError:
+            errorHandler(syslog.LOG_ERR, "No section: "+str(key) +"_bmcs in ini file. All bmc events will be forwarded to entities being notified. ")
 
-"""
-     Loads the information from the configuration file and initializes the daemon for main operation
+def getPlugins():
+    """
+        gets a list of valid plugins from the plugin directory
        
-     @return: modifies global list of nodes, and loads the list with nodes the daemon is responsible for. 
-""" 
+       @return: a list containing valid files to import 
+    """
+    
+    plugins = []
+    plugindir = "./plugins"
+    mainmodule = "__init__"
+    files = os.listdir(plugindir)
+    for filename in files:
+        fullpath = os.path.join(plugindir, filename)
+        if os.path.isdir(fullpath):
+            for f in os.listdir(fullpath):
+                addFile = os.path.join(filename, f)
+                files.append(addFile)
+        if not os.path.isdir(fullpath) and ".py" in filename and not mainmodule in filename and not ".pyc" in filename:
+            #is a potential module
+            modname = os.path.basename(fullpath).split('.py')[0]
+            pathonly = os.path.split(fullpath)[0]
+            info = imp.find_module(modname ,[pathonly])
+            if info not in plugins:
+                plugins.append({"name":modname, "info":info})
+        
+    return plugins
+
+def loadPlugins(plugin):
+    """
+         Loads the specified plugin
+         @plugin: the absolute path and filename to the module to load
+         @return: loaded module 
+    """ 
+    return imp.load_module(plugin["name"], *plugin["info"])
+
+
+
 def initialize():
+    """
+         Loads the information from the configuration file and initializes the daemon for main operation
+           
+         @return: modifies global list of nodes, and loads the list with nodes the daemon is responsible for. 
+    """ 
     global csmDown
     csmDown = False
     global killNow
@@ -366,29 +454,55 @@ def initialize():
                                     "failedFirstTry": False,
                                     "successfullyReported": True}
     except KeyError:
-        errorHandler(syslog.LOG_ERR, "No section: notify in file ibmpowerhwmon.conf. All alerts will be reported to the system log") 
-
+        errorHandler(syslog.LOG_ERR, "No section: notify in file ibmpowerhwmon.conf. Alerts will not be forwarded anywhere.") 
+    
+    for i in getPlugins():
+        print("Loading Plugin " + i["name"])
+        plugin = loadPlugins(i)
+        for entity in notifyList:
+            if isinstance(notifyList[entity]['function'], basestring):
+                if hasattr(plugin, notifyList[entity]["function"]):
+                    notifyList[entity]["function"] = getattr(plugin, notifyList[entity]["function"])
+    
+    #check for entities to notify that don't have associated plugin
+    missingPlugins = []
+    for entity in notifyList:
+        if isinstance(notifyList[entity]['function'], str) or isinstance(notifyList[entity]['function'], unicode):
+            errorHandler(syslog.LOG_WARNING,"Notify function not found " + notifyList[entity]['function'] +". This entity will not be notified of alerts.")
+            missingPlugins.append(entity)
+    #remove entities to notify that don't have the associated plugin
+    for plugin in missingPlugins:
+        del notifyList[plugin]
     try:
-        
         nodes = dict(confParser.items('nodes'))
         for key in nodes:
             mynodelist.append(json.loads(nodes[key]))
+            if 'username' not in mynodelist[-1]:
+                if mynodelist[-1]['accessType'] == "ipmi":
+                    mynodelist[-1]['username'] = "ADMIN"
+                    mynodelist[-1]['password'] = "ADMIN"
+                elif mynodelist[-1]['accessType'] == 'openbmcRest':
+                    mynodelist[-1]['username'] = "root"
+                    mynodelist[-1]['password'] = "0penBmc"
             mynodelist[-1]['dupTimeIDList'] = list(mynodelist[-1]['dupTimeIDList'])
             mynodelist[-1]['pollFailedCount'] = 0
             for entity in notifyList:
                 notifyList[entity][mynodelist[-1]['bmcHostname']] = {
                     'lastLogTime': mynodelist[-1]['lastLogTime'],
                     'dupTimeIDList': mynodelist[-1]['dupTimeIDList']}
+                
     except Exception as e:
         print(e)
     
+    #load last reported times from storage file
+    loadBMCLastReports()
     #run LSF to verify systems to monitor
     #to be implemented later
     
     #Determine the maximum number of nodes
     maxThreads = 1
     try:
-        maxThreads = int(dict(confParser.items('base configuration'))['maxthreads'])
+        maxThreads = int(dict(confParser.items('base_configuration'))['maxthreads'])
     except KeyError:
         errorHandler(syslog.LOG_ERR, "No section: base configuration in file ibmpowerhwmon.conf. Defaulting to one thread for polling") 
     
@@ -404,19 +518,23 @@ def initialize():
     minPollingInterval = 15*numPasses
     for i in range(maxThreads):
         print("Creating thread " + str(i))
+
         t = threading.Thread(target=BMCEventProcessor)
         t.daemon = True
         t.start()   
-    
-    
+      
+    t = threading.Thread(target=updateBMCLastReports)
+    t.daemon = True
+    t.start()
     #Setup polling interval
     pollNodes(minPollingInterval) 
-"""
-     Used as timer for the polling interval. set to 20 seconds
-       
-     @return: Does not return a specific value but loads the global queue with nodes that get polled 
-""" 
+
 def pollNodes(interval):
+    """
+         Used as timer for the polling interval. set to 20 seconds
+           
+         @return: Does not return a specific value but loads the global queue with nodes that get polled 
+    """ 
     print ("polling the nodes")
     global killNow
     if not killNow:
@@ -429,12 +547,14 @@ def pollNodes(interval):
         nodes2poll.put(mynodelist[i])
     
     
-"""
-     main thread for the applications. Runs a single thread to process node alerts. 
-"""     
+  
 if __name__ == '__main__':
+    """
+         main thread for the application. 
+    """   
     try:
         nodes2poll = queue.Queue()
+        updateConfFile = queue.Queue()
         mynodelist = []
         missingEvents = {}
         lock = threading.Lock()
@@ -444,7 +564,7 @@ if __name__ == '__main__':
         
         print(os.getpid())
         while(True):
-#             time.sleep(10)
+            time.sleep(1)
 #             if(nodes2poll.empty() == False):
 #                 BMCEventProcessor()
             if(killNow):

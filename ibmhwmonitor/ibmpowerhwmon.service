@@ -19,7 +19,7 @@ After=multi-user.target syslog.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python /opt/ibm/ras/bin/ibmpowerhwmon.py
+ExecStart=/usr/bin/python3 /opt/ibm/ras/bin/ibmpowerhwmon.py
 WorkingDirectory=/opt/ibm/ras
 Restart=always
 RestartSec=5
