@@ -2,22 +2,23 @@
 %define _binaries_in_noarch_packages_terminate_build   0
 Summary: IBM POWER LC Cluster RAS Service Package
 Name: ibm-crassd
-Version: 0.6
-Release: 1
+Version: 0.7
+Release: 2
 License: BSD
 Group: System Environment/Base
 BuildArch: ppc64le
 URL: http://www.ibm.com/
 Source0: %{name}-%{version}-%{release}.tgz
+AutoReqProv: no
 Prefix: /opt
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 
 BuildRequires: java-devel >= 1.7.0
 
 Requires: java >= 1.7.0
-Requires: python34 
-Requires: python34-requests
-Requires: python34-PyYAML
+Requires: python 
+Requires: python-requests
+Requires: libstdc++
 
 %if 0%{?_unitdir:1}
 Requires(post): systemd-units
@@ -37,6 +38,26 @@ ate including environmental, reliability, service, and failure data.
 %prep
 %setup -q -n %{name}-%{version}-%{release}
 
+%pre
+installList=""
+python_websocket=$(ls /usr/lib/python2.7/site-packages/ | grep -ie websocket_client)
+python_configparser=$(ls /usr/lib/python2.7/site-packages/ | grep -ie configparser)
+if [ -z "$python_websocket" ]; then
+	installList+=" websocket-client"	
+fi
+
+if [ -z "$python_configparser" ]; then
+	installList+=" configparser"	
+fi
+if [ -n "$installList" ];then
+	message="The following python packages are are required:$installList"
+	echo $message
+	echo "Install these packages from pypi.python.org using the following command: "
+	echo "easy_install$installList"
+	echo "Once complete, run this installer again. "
+	exit 1
+fi
+
 %build
 %{__make}
 
@@ -44,6 +65,7 @@ ate including environmental, reliability, service, and failure data.
 #rm -rf $RPM_BUILD_ROOT
 export DESTDIR=$RPM_BUILD_ROOT/opt/ibm/ras
 mkdir -p $DESTDIR/bin
+mkdir -p $DESTDIR/bin/plugins
 mkdir -p $DESTDIR/bin/ppc64le
 mkdir -p $DESTDIR/etc
 mkdir -p $DESTDIR/lib
@@ -51,13 +73,15 @@ mkdir -p $RPM_BUILD_ROOT/usr/lib/systemd/system
 
 %{__make} install
 
-cp ibmhwmonitor/*.py openbmctool/*.py $DESTDIR/bin
+cp ibmhwmonitor/*.py $DESTDIR/bin
+cp -r ibmhwmonitor/plugins/* $DESTDIR/bin/plugins
 cp ibmhwmonitor/ibmpowerhwmon.config $DESTDIR/etc
 cp ibmhwmonitor/ibmpowerhwmon.service $RPM_BUILD_ROOT/usr/lib/systemd/system
-cp openbmctool/*.yml $DESTDIR/lib
 #cp errl/hbotStringFile $DESTDIR/lib
 cp errl/ppc64le/errl $DESTDIR/bin/ppc64le
-cp rastools/* $DESTDIR/bin/ppc64le
+#cp rastools/gard $DESTDIR/bin/ppc64le
+#cp rastools/putscom $DESTDIR/bin/ppc64le
+#cp rastools/getscom $DESTDIR/bin/ppc64le
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -67,16 +91,25 @@ rm -rf $RPM_BUILD_ROOT
 /opt/ibm/ras/lib/crassd.jar
 /opt/ibm/ras/etc/ibmpowerhwmon.config
 /opt/ibm/ras/bin/ibmpowerhwmon.py
-/opt/ibm/ras/bin/openbmctool.py
+/opt/ibm/ras/bin/config.py
+/opt/ibm/ras/bin/notificationlistener.py
+/opt/ibm/ras/bin/plugins/
+/opt/ibm/ras/bin/plugins/ibm_csm/
+/opt/ibm/ras/bin/plugins/ibm_csm/__init__.py
+/opt/ibm/ras/bin/plugins/ibm_csm/csmnotify.py
+/opt/ibm/ras/bin/plugins/__init__.py
+/opt/ibm/ras/bin/plugins/ibm_ess/
+/opt/ibm/ras/bin/plugins/ibm_ess/essnotify.py
+/opt/ibm/ras/bin/plugins/ibm_ess/__init__.py
 /opt/ibm/ras/bin/ppc64le/errl
-/opt/ibm/ras/lib/policyTable.yml
 /usr/lib/systemd/system/ibmpowerhwmon.service
-/opt/ibm/ras/bin/ppc64le/getscom
-/opt/ibm/ras/bin/ppc64le/putscom
-/opt/ibm/ras/bin/ppc64le/gard
+#/opt/ibm/ras/bin/ppc64le/getscom
+#/opt/ibm/ras/bin/ppc64le/putscom
+#/opt/ibm/ras/bin/ppc64le/gard
 
 
 %post
 #%systemd_post ibmpowerhwmon.service
-
+#ln -s -f /opt/ibm/ras/bin/openbmctool.py /usr/bin/openbmctool
+#ls -s -f /opt/ibm/ras/bin/ppc64le/plc/plc.pl /usr/bin/plc.pl
 %changelog

@@ -15,11 +15,12 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 BuildRequires: java-devel >= 1.7.0
 
 Requires: java >= 1.7.0
-Requires: python >= 2.7.5
-Requires: python-requests
-Requires: python-configparser
-Requires: PyYAML
-Requires: python-webpy
+#Requires: python >= 3.4.5
+Requires: python34
+Requires: python34-requests
+#Requires: python-configparser
+Requires: python34-PyYAML
+#Requires: python-webpy
 
 %if 0%{?_unitdir:1}
 Requires(post): systemd-units
@@ -55,7 +56,7 @@ cp ibmhwmonitor/*.py openbmctool/*.py $DESTDIR/bin
 cp ibmhwmonitor/ibmpowerhwmon.config $DESTDIR/etc
 cp ibmhwmonitor/ibmpowerhwmon.service $RPM_BUILD_ROOT/usr/lib/systemd/system
 cp openbmctool/*.yml $DESTDIR/lib
-cp errl/hbotStringFile $DESTDIR/lib
+#cp errl/hbotStringFile $DESTDIR/lib
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -67,7 +68,7 @@ rm -rf $RPM_BUILD_ROOT
 /opt/ibm/ras/bin/ibmpowerhwmon.py
 /opt/ibm/ras/bin/openbmctool.py
 /opt/ibm/ras/lib/policyTable.yml
-/opt/ibm/ras/lib/hbotStringFile
+#/opt/ibm/ras/lib/hbotStringFile
 /usr/lib/systemd/system/ibmpowerhwmon.service
 
 %post

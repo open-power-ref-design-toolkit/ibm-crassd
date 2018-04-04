@@ -4,6 +4,7 @@ import time
 import json
 import syslog
 import config
+import os
 
 def errorHandler(severity, message):
     """
@@ -16,7 +17,22 @@ def errorHandler(severity, message):
     syslog.openlog(ident="IBMPowerHWMonitor", logoption=syslog.LOG_PID|syslog.LOG_NOWAIT)
     syslog.syslog(severity, message)    
 
-
+def initialize():
+    config.pluginPolicies['csmPolicy'] = loadPolicyTable('/opt/ibm/ras/bin/plugins/ibm_csm/CSMpolicyTable.json')
+    if config.pluginPolicies['csmPolicy'] is not None:
+        return True
+    else:
+        return False
+   
+def createArgString(cerEvent):
+    argString = ""
+    if '$(x)' in config.pluginPolicies['csmPolicy'][cerEvent['CerID']]['Message']:
+        argString = argString + "x=" + cerEvent['ComponentInstance'].split(',')[0]
+    if '$(y)' in config.pluginPolicies['csmPolicy'][cerEvent['CerID']]['Message']:
+        argString = argString + ",y=" + cerEvent['ComponentInstance'].split(',')[1]  
+    if '$(z)' in config.pluginPolicies['csmPolicy'][cerEvent['CerID']]['Message']:
+        argString = argString + "x=" + cerEvent['ComponentInstance'].split(',')[2]  
+    return argString
 def notifyCSM(cerEvent, impactedNode, entityAttr):
     """
          sends alert to CSM
@@ -31,17 +47,20 @@ def notifyCSM(cerEvent, impactedNode, entityAttr):
     with config.lock:
         failedFirstFlag = entityAttr['csm']['failedFirstTry']
         csmDown = entityAttr['csm']['receiveEntityDown']
-    if(cerEvent['serviceable'] == 'No'):
+    if(config.pluginPolicies['csmPolicy'][cerEvent['CerID']]['CSMEnabled']== False):
         return True
     if(failedFirstFlag == False):
         msgID = "bmc." + "".join(cerEvent['eventType'].split()) + "." + cerEvent['CerID']
+        argString = createArgString(cerEvent)
         eventTime =datetime.datetime.fromtimestamp(int(cerEvent['timestamp'])).strftime("%Y-%m-%d %H:%M:%S")
         eventEntry = {'msg_id': msgID, 'location_name':impactedNode, 'time_stamp':eventTime,
                       "raw_data": "serviceable:"+ cerEvent['serviceable'] + " || subsystem: "+ cerEvent['subSystem'] }
+        if argString != "":
+            eventEntry['kvcsv'] = argString
     else:
         msgID = "bmc.Firmware/SoftwareFailure.FQPSPEM0003G"
         eventEntry = {'msg_id': msgID, 'location_name':impactedNode, 'time_stamp':time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
-                      "raw_data":(cerEvent['CerID'] + "|| "+cerEvent['message']+"|| serviceable:"+ cerEvent['serviceable']+ "|| severity: "+ 
+                      "raw_data":(cerEvent['CerID'] + "|| "+config.pluginPolicies['csmPolicy'][cerEvent['CerID']]['Message']+"|| serviceable:"+ cerEvent['serviceable']+ "|| severity: "+ 
                                   cerEvent['severity'])}
     if("additionalDetails" in cerEvent):
         eventEntry['raw_data'] = eventEntry['raw_data'] + cerEvent['sensor'] + " || " + cerEvent['state'] + " || " + cerEvent['additionalDetails']
@@ -71,3 +90,15 @@ def notifyCSM(cerEvent, impactedNode, entityAttr):
             with config.lock:
                 entityAttr['csm']['receiveEntityDown'] = True;
         return False   
+    
+     
+def loadPolicyTable(pathToPolicyTable):
+    policyTable = {}
+    if(os.path.exists(pathToPolicyTable)):
+        with open(pathToPolicyTable, 'r') as stream:
+            try:
+                contents =json.load(stream)
+                policyTable = contents['events']
+            except Exception as err:
+                print(err)
+    return policyTable

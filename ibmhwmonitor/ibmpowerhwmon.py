@@ -34,6 +34,7 @@ import math
 import config
 from config import *
 import imp
+import notificationlistener
 
 def sigHandler(signum, frame):
     """
@@ -93,6 +94,7 @@ def updateEventDictionary(eventsDict):
                 commonEvent['subSystem'] = eventsDict[key]['AffectedSubsystem']
                 commonEvent['userAction'] = eventsDict[key]['UserAction']
                 commonEvent['timestamp'] = str(int(int(eventsDict[key]['timestamp'])/1000))
+                commonEvent['ComponentInstance'] = str(eventsDict[key]['ComponentInstance'])
                 newEventsDict[key] = commonEvent
             except KeyError:
                 print (key +' not found in events dictionary')
@@ -226,6 +228,7 @@ def BMCEventProcessor():
                                     nodeCommsLost = True
                                     node['pollFailedCount'] += 1
                                 if(node['pollFailedCount'] != 2):
+                                    #forward the network connection failure at 3 consecutive failures. 
                                     continue
                                 
                             #only report new events
@@ -396,7 +399,7 @@ def getPlugins():
     """
     
     plugins = []
-    plugindir = "./plugins"
+    plugindir = "plugins"
     mainmodule = "__init__"
     files = os.listdir(plugindir)
     for filename in files:
@@ -417,59 +420,25 @@ def getPlugins():
 
 def loadPlugins(plugin):
     """
-         Loads the specified plugin
-         @plugin: the absolute path and filename to the module to load
-         @return: loaded module 
+        Loads the specified plugin
+        @plugin: the absolute path and filename to the module to load
+        @return: loaded module 
     """ 
     return imp.load_module(plugin["name"], *plugin["info"])
 
-
-
-def initialize():
+def validatePluginNotifications(confParser):
     """
-         Loads the information from the configuration file and initializes the daemon for main operation
-           
-         @return: modifies global list of nodes, and loads the list with nodes the daemon is responsible for. 
-    """ 
-    global csmDown
-    csmDown = False
-    global killNow
-    killNow = False
-
-    #The following list indicates failure to communicate to the BMC and retrieve information
-    global networkErrorList
-    networkErrorList = ['FQPSPIN0000M','FQPSPIN0001M', 'FQPSPIN0002M','FQPSPIN0003M','FQPSPCR0020M', 'FQPSPSE0004M']
-    #read the config file
-    confParser = configparser.ConfigParser()
-    #Setup Notifications
-    global notifyList
-    notifyList = {}
-    try:
-        confParser.read('/opt/ibm/ras/etc/ibmpowerhwmon.config')
-        test = dict(confParser.items('notify'))
-        for key in test:
-            if test[key] == 'True':
-                notifyList[key] = {"function": test[key+'function'], 
-                                    "receiveEntityDown":False,
-                                    "failedFirstTry": False,
-                                    "successfullyReported": True}
-    except KeyError:
-        errorHandler(syslog.LOG_ERR, "No section: notify in file ibmpowerhwmon.conf. Alerts will not be forwarded anywhere.") 
-    
-    for i in getPlugins():
-        print("Loading Plugin " + i["name"])
-        plugin = loadPlugins(i)
-        for entity in notifyList:
-            if isinstance(notifyList[entity]['function'], basestring):
-                if hasattr(plugin, notifyList[entity]["function"]):
-                    notifyList[entity]["function"] = getattr(plugin, notifyList[entity]["function"])
-    
+        Validates plugins loaded for each of the designated notifications. 
+        Will remove reported to entities if their plugin's notify function isn't found
+        @confParser: the configuration file parser with the data containing node info
+    """
     #check for entities to notify that don't have associated plugin
     missingPlugins = []
     for entity in notifyList:
         if isinstance(notifyList[entity]['function'], str) or isinstance(notifyList[entity]['function'], unicode):
             errorHandler(syslog.LOG_WARNING,"Notify function not found " + notifyList[entity]['function'] +". This entity will not be notified of alerts.")
             missingPlugins.append(entity)
+    
     #remove entities to notify that don't have the associated plugin
     for plugin in missingPlugins:
         del notifyList[plugin]
@@ -484,18 +453,101 @@ def initialize():
                 elif mynodelist[-1]['accessType'] == 'openbmcRest':
                     mynodelist[-1]['username'] = "root"
                     mynodelist[-1]['password'] = "0penBmc"
-            mynodelist[-1]['dupTimeIDList'] = list(mynodelist[-1]['dupTimeIDList'])
+            mynodelist[-1]['dupTimeIDList'] = []
+            mynodelist[-1]['lastLogTime'] = 0
             mynodelist[-1]['pollFailedCount'] = 0
             for entity in notifyList:
                 notifyList[entity][mynodelist[-1]['bmcHostname']] = {
                     'lastLogTime': mynodelist[-1]['lastLogTime'],
                     'dupTimeIDList': mynodelist[-1]['dupTimeIDList']}
-                
+        return nodes        
     except Exception as e:
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        print("exception: ", exc_type, fname, exc_tb.tb_lineno)
         print(e)
+        sys.exit()
     
-    #load last reported times from storage file
+def setupNotifications():
+    """
+        Loads the information from the configuration file and setup notification to monitoring entities
+        @return the configuration parser object   
+    """ 
+    #read the config file
+    confParser = configparser.ConfigParser()
+    global notifyList
+    notifyList = {}
+    try:
+        if os.path.exists('/opt/ibm/ras/etc/ibmpowerhwmon.config'):
+            confParser.read('/opt/ibm/ras/etc/ibmpowerhwmon.config')
+            test = dict(confParser.items('notify'))
+            for key in test:
+                if test[key] == 'True':
+                    notifyList[key] = {"function": test[key+'function'], 
+                                        "receiveEntityDown":False,
+                                        "failedFirstTry": False,
+                                        "successfullyReported": True}
+        else:
+            errorHandler(syslog.LOG_CRIT, "Configuration file not found. Exiting.")
+            sys.exit()
+    except KeyError:
+        errorHandler(syslog.LOG_ERR, "No section: notify in file ibmpowerhwmon.conf. Alerts will not be forwarded. Terminating")
+        sys.exit() 
+    
+    for i in getPlugins():
+        print("Loading Plugin " + i["name"])
+        plugin = loadPlugins(i)
+        if hasattr(plugin, 'initialize'):
+            if not plugin.initialize():
+                errorHandler(syslog.LOG_CRIT, 'Plugin: ' + i['name'] + ' failed to initialize. Aborting now.')
+                sys.exit()
+        for entity in notifyList:
+            if isinstance(notifyList[entity]['function'], basestring):
+                if hasattr(plugin, notifyList[entity]["function"]):
+                    notifyList[entity]["function"] = getattr(plugin, notifyList[entity]["function"])
+    return confParser
+    
+def configurePushNotifications():   
+    """
+        configures a websocket to listen for push notifications from openbmc. Spawns 1 thread per push notification. 
+        updates the node list by adding information on the thread for each websocket 
+    """ 
+    for node in mynodelist:
+        if node['accessType'] == 'openbmcRest':
+            t = threading.Thread(target=notificationlistener.openSocket, args=[node['bmcHostname'], node['username'], node['password']])
+            node['listener'] = t
+            t.daemon = True
+            t.start()  
+def queryAllNodes():
+    """
+        Queries all nodes to get initial status upon starting up. 
+    """ 
+    for node in mynodelist:
+        #load nodes that are using polling into the queue
+        nodes2poll.put(node)
+def initialize():
+    """
+        Initializes the application by loading the nodes to monitor, getting the plugins needed, and setting up
+        the forwarding through the specified plugins. Spools up the threads that will process the bmc alerts
+        when a queue entry is created. This also configures push notifications. 
+    """ 
+    global csmDown
+    csmDown = False
+    global killNow
+    killNow = False
+
+    #The following list indicates failure to communicate to the BMC and retrieve information
+    global networkErrorList
+    networkErrorList = ['FQPSPIN0000M','FQPSPIN0001M', 'FQPSPIN0002M','FQPSPIN0003M','FQPSPCR0020M', 'FQPSPSE0004M']
+    
+    #Setup Notifications
+    confParser = setupNotifications()
+    
+    #validate all of the needed plugins loaded
+    validatePluginNotifications(confParser)
+    #load last reported times from storage file to prevent duplicate entries
     loadBMCLastReports()
+    
     #run LSF to verify systems to monitor
     #to be implemented later
     
@@ -511,10 +563,10 @@ def initialize():
     minPollingInterval = 30.0
     numPasses = 1
     #Create the worker threads
-    if(maxThreads >= len(nodes)):
-        maxThreads = len(nodes)
+    if(maxThreads >= len(mynodelist)):
+        maxThreads = len(mynodelist)
     else:
-        numPasses = math.ceil(len(nodes)/maxThreads)
+        numPasses = math.ceil(len(mynodelist)/maxThreads)
     minPollingInterval = 15*numPasses
     for i in range(maxThreads):
         print("Creating thread " + str(i))
@@ -526,6 +578,9 @@ def initialize():
     t = threading.Thread(target=updateBMCLastReports)
     t.daemon = True
     t.start()
+    
+    configurePushNotifications()
+    queryAllNodes()
     #Setup polling interval
     pollNodes(minPollingInterval) 
 
@@ -543,9 +598,18 @@ def pollNodes(interval):
         t.start()
     
     
-    for i in range (len(mynodelist)):
-        nodes2poll.put(mynodelist[i])
+    for node in mynodelist:
+        if node['accessType'] == 'ipmi':
+            #load nodes that are using polling into the queue
+            nodes2poll.put(node)
+        elif node['accessType'] == 'openbmcRest':
+            if 'listener' in node and not node['listener'].isAlive():
+                t = threading.Thread(target=notificationlistener.openSocket, args=[node['bmcHostname'], node['username'], node['password']])
+                node['listener'] = t
+                t.daemon = True
+                t.start()  
     
+    #check for dead push notification
     
   
 if __name__ == '__main__':
@@ -553,20 +617,17 @@ if __name__ == '__main__':
          main thread for the application. 
     """   
     try:
-        nodes2poll = queue.Queue()
-        updateConfFile = queue.Queue()
-        mynodelist = []
-        missingEvents = {}
-        lock = threading.Lock()
+#         nodes2poll = queue.Queue()
+#         updateConfFile = queue.Queue()
+#         mynodelist = []
+#         missingEvents = {}
+#         lock = threading.Lock()
         initialize()
-        global killNow
-#         nodes2poll.join()
+#         global killNow
         
         print(os.getpid())
         while(True):
             time.sleep(1)
-#             if(nodes2poll.empty() == False):
-#                 BMCEventProcessor()
             if(killNow):
                 break
         errorHandler(syslog.LOG_ERR, "The Power HW Monitoring service has been stopped")
