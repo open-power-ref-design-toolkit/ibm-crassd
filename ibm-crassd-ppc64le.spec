@@ -3,12 +3,13 @@
 Summary: IBM POWER LC Cluster RAS Service Package
 Name: ibm-crassd
 Version: 0.7
-Release: 2
+Release: 3
 License: BSD
 Group: System Environment/Base
 BuildArch: ppc64le
 URL: http://www.ibm.com/
 Source0: %{name}-%{version}-%{release}.tgz
+#Remove for specific versions of libstdc as errl files have requirements not satisfied by base os. Still runs fine with newer versions. 
 AutoReqProv: no
 Prefix: /opt
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
