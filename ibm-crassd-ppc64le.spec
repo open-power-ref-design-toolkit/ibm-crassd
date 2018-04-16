@@ -42,7 +42,9 @@ ate including environmental, reliability, service, and failure data.
 %pre
 installList=""
 python_websocket=$(ls /usr/lib/python2.7/site-packages/ | grep -ie websocket_client)
+python_websocket+=$(ls /root/anaconda2/lib/python2.7/site-packages/ | grep -ie websocket_client)
 python_configparser=$(ls /usr/lib/python2.7/site-packages/ | grep -ie configparser)
+python_configparser+=$(ls /root/anaconda2/lib/python2.7/site-packages/ | grep -ie configparser)
 if [ -z "$python_websocket" ]; then
 	installList+=" websocket-client"	
 fi

@@ -476,8 +476,6 @@ def validatePluginNotifications(confParser):
     for plugin in missingPlugins:
         del notifyList[plugin]
         
-    #create list of nodes to monitor
-    return createNodeList(confParser)
     
 def setupNotifications():
     """
@@ -511,10 +509,12 @@ def setupNotifications():
     for i in getPlugins():
         print("Loading Plugin " + i["name"])
         plugin = loadPlugins(i)
-        if hasattr(plugin, 'initialize'):
-            if not plugin.initialize():
-                errorHandler(syslog.LOG_CRIT, 'Plugin: ' + i['name'] + ' failed to initialize. Aborting now.')
-                sys.exit()
+        for key in notifyList:
+            if key in i["name"]:
+                if hasattr(plugin, 'initialize'):
+                    if not plugin.initialize():
+                        errorHandler(syslog.LOG_CRIT, 'Plugin: ' + i['name'] + ' failed to initialize. Aborting now.')
+                        sys.exit()
         for entity in notifyList:
             if isinstance(notifyList[entity]['function'], basestring):
                 if hasattr(plugin, notifyList[entity]["function"]):
