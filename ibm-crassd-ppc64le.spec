@@ -74,11 +74,11 @@ mkdir -p $RPM_BUILD_ROOT/usr/lib/systemd/system
 
 %{__make} install
 
-cp ibmhwmonitor/*.py $DESTDIR/bin
-cp -r ibmhwmonitor/plugins/* $DESTDIR/bin/plugins
-cp ibmhwmonitor/ibmpowerhwmon.config $DESTDIR/etc
-cp ibmhwmonitor/ibmpowerhwmon.service $RPM_BUILD_ROOT/usr/lib/systemd/system
-#cp errl/hbotStringFile $DESTDIR/lib
+cp ibm-crassd/*.py $DESTDIR/bin
+cp -r ibm-crassd/plugins/* $DESTDIR/bin/plugins
+cp ibm-crassd/ibm-crassd.config $DESTDIR/etc
+cp ibm-crassd/ibmcrassd.service $RPM_BUILD_ROOT/usr/lib/systemd/system
+cp ibm-crassd/85-ibm-crassd.preset $RPM_BUILD_ROOT/usr/lib/systemd/system-preset
 cp errl/ppc64le/errl $DESTDIR/bin/ppc64le
 #cp rastools/gard $DESTDIR/bin/ppc64le
 #cp rastools/putscom $DESTDIR/bin/ppc64le
@@ -90,20 +90,22 @@ rm -rf $RPM_BUILD_ROOT
 %files
 %defattr(-,root,root,-)
 /opt/ibm/ras/lib/crassd.jar
-/opt/ibm/ras/etc/ibmpowerhwmon.config
-/opt/ibm/ras/bin/ibmpowerhwmon.py
+/opt/ibm/ras/etc/ibm-crassd.config
+/opt/ibm/ras/bin/ibm-crassd.py
 /opt/ibm/ras/bin/config.py
 /opt/ibm/ras/bin/notificationlistener.py
 /opt/ibm/ras/bin/plugins/
 /opt/ibm/ras/bin/plugins/ibm_csm/
 /opt/ibm/ras/bin/plugins/ibm_csm/__init__.py
 /opt/ibm/ras/bin/plugins/ibm_csm/csmnotify.py
+/opt/ibm/ras/bin/plugins/ibm_csm/CSMpolicyTable.json
 /opt/ibm/ras/bin/plugins/__init__.py
 /opt/ibm/ras/bin/plugins/ibm_ess/
 /opt/ibm/ras/bin/plugins/ibm_ess/essnotify.py
 /opt/ibm/ras/bin/plugins/ibm_ess/__init__.py
 /opt/ibm/ras/bin/ppc64le/errl
-/usr/lib/systemd/system/ibmpowerhwmon.service
+/usr/lib/systemd/system/ibm-crassd.service
+/usr/lib/systemd/system-preset/85-ibm-crassd.preset
 #/opt/ibm/ras/bin/ppc64le/getscom
 #/opt/ibm/ras/bin/ppc64le/putscom
 #/opt/ibm/ras/bin/ppc64le/gard
