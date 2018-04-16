@@ -26,12 +26,16 @@ def initialize():
    
 def createArgString(cerEvent):
     argString = ""
-    if '$(x)' in config.pluginPolicies['csmPolicy'][cerEvent['CerID']]['Message']:
-        argString = argString + "x=" + cerEvent['ComponentInstance'].split(',')[0]
-    if '$(y)' in config.pluginPolicies['csmPolicy'][cerEvent['CerID']]['Message']:
-        argString = argString + ",y=" + cerEvent['ComponentInstance'].split(',')[1]  
-    if '$(z)' in config.pluginPolicies['csmPolicy'][cerEvent['CerID']]['Message']:
-        argString = argString + "x=" + cerEvent['ComponentInstance'].split(',')[2]  
+    index = 0
+    cerMessage = config.pluginPolicies['csmPolicy'][cerEvent['CerID']]['Message']
+    argInstance = 0
+    while cerMessage.find('$(', index) != -1:
+        index = cerMessage.find('$(', index) + 2
+        arg = cerMessage[index:cerMessage.find(')',index)]
+        if argString != "":
+            argString = argString +','
+        argString = argString + arg +'=' + cerEvent['ComponentInstance'].split(',')[argInstance]
+        argInstance += 1
     return argString
 def notifyCSM(cerEvent, impactedNode, entityAttr):
     """
