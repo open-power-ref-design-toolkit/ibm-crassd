@@ -49,3 +49,20 @@ def notifymmhealth(cerEvent, impactedNode, entityAttr):
                 entityAttr['mmhealth']['receiveEntityDown'] = True
     
     return False
+
+def initialize():
+    """
+        Initializes the plugin and checks to see if the powerhw component of mmhealth has been initialized.
+        
+    """
+    proc = subprocess.Popen(['mmhealth', 'node', 'show', 'powerhw'])
+    result = proc.communicate()[0].decode('ascii')
+    lines = result.split('\n')
+    healthyAlert = {'CerID': 'FQPSPPW0018M', 'compInstance': 1}
+    for line in lines:
+        if 'POWERHW' in line:
+            if 'CHECKING' in line:
+                for node in config.mynodelist:
+                    notifymmhealth(healthyAlert, node['xcatNodeName'], config.notifyList)
+                break
+    return True

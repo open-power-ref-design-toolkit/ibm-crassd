@@ -24,6 +24,8 @@ global nodes2poll
 nodes2poll = queue.Queue()
 global updateConfFile
 updateConfFile = queue.Queue()
+global notifyList
+notifyList = {}
 global mynodelist
 mynodelist = []
 global missingEvents

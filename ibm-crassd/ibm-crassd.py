@@ -242,7 +242,7 @@ def BMCEventProcessor():
                                     notifyList[key]['failedFirstTry'] = False
                                     lastlogtime = notifyList[key][bmcHostname]['lastLogTime']
                                 if(eventsDict[event]['timestamp']>lastlogtime):
-                                    repsuccess = func(eventsDict[event], impactednode, notifyList)
+                                    repsuccess = func(eventsDict[event], impactednode, notifyList) 
 #                                     if funcName in locals():
 #                                         repsuccess = locals()[funcName](eventsDict[event], impactednode, notifyList)
 #                                     elif funcName in globals():
@@ -426,22 +426,13 @@ def loadPlugins(plugin):
     """ 
     return imp.load_module(plugin["name"], *plugin["info"])
 
-def validatePluginNotifications(confParser):
+def createNodeList(confParser):
     """
-        Validates plugins loaded for each of the designated notifications. 
-        Will remove reported to entities if their plugin's notify function isn't found
-        @confParser: the configuration file parser with the data containing node info
+        Gets the list of nodes and loads mynodeList dictionary
+        @confParser: The configuration parser object with the nodes entity
+        @return: The high level list of nodes
     """
-    #check for entities to notify that don't have associated plugin
-    missingPlugins = []
-    for entity in notifyList:
-        if isinstance(notifyList[entity]['function'], str) or isinstance(notifyList[entity]['function'], unicode):
-            errorHandler(syslog.LOG_WARNING,"Notify function not found " + notifyList[entity]['function'] +". This entity will not be notified of alerts.")
-            missingPlugins.append(entity)
     
-    #remove entities to notify that don't have the associated plugin
-    for plugin in missingPlugins:
-        del notifyList[plugin]
     try:
         nodes = dict(confParser.items('nodes'))
         for key in nodes:
@@ -460,13 +451,33 @@ def validatePluginNotifications(confParser):
                 notifyList[entity][mynodelist[-1]['bmcHostname']] = {
                     'lastLogTime': mynodelist[-1]['lastLogTime'],
                     'dupTimeIDList': mynodelist[-1]['dupTimeIDList']}
-        return nodes        
+       
     except Exception as e:
         exc_type, exc_obj, exc_tb = sys.exc_info()
         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
         print("exception: ", exc_type, fname, exc_tb.tb_lineno)
         print(e)
         sys.exit()
+    
+def validatePluginNotifications(confParser):
+    """
+        Validates plugins loaded for each of the designated notifications. 
+        Will remove reported to entities if their plugin's notify function isn't found
+        @confParser: the configuration file parser with the data containing node info
+    """
+    #check for entities to notify that don't have associated plugin
+    missingPlugins = []
+    for entity in notifyList:
+        if isinstance(notifyList[entity]['function'], str) or isinstance(notifyList[entity]['function'], unicode):
+            errorHandler(syslog.LOG_WARNING,"Notify function not found " + notifyList[entity]['function'] +". This entity will not be notified of alerts.")
+            missingPlugins.append(entity)
+    
+    #remove entities to notify that don't have the associated plugin
+    for plugin in missingPlugins:
+        del notifyList[plugin]
+        
+    #create list of nodes to monitor
+    return createNodeList(confParser)
     
 def setupNotifications():
     """
@@ -478,8 +489,8 @@ def setupNotifications():
     global notifyList
     notifyList = {}
     try:
-        if os.path.exists('/opt/ibm/ras/etc/ibmpowerhwmon.config'):
-            confParser.read('/opt/ibm/ras/etc/ibmpowerhwmon.config')
+        if os.path.exists('/opt/ibm/ras/etc/ibm-crassd.config'):
+            confParser.read('/opt/ibm/ras/etc/ibm-crassd.config')
             test = dict(confParser.items('notify'))
             for key in test:
                 if test[key] == 'True':
@@ -493,6 +504,9 @@ def setupNotifications():
     except KeyError:
         errorHandler(syslog.LOG_ERR, "No section: notify in file ibmpowerhwmon.conf. Alerts will not be forwarded. Terminating")
         sys.exit() 
+    
+    #get the nodes to push alerts to
+    createNodeList(confParser)
     
     for i in getPlugins():
         print("Loading Plugin " + i["name"])
@@ -540,7 +554,7 @@ def initialize():
     global networkErrorList
     networkErrorList = ['FQPSPIN0000M','FQPSPIN0001M', 'FQPSPIN0002M','FQPSPIN0003M','FQPSPCR0020M', 'FQPSPSE0004M']
     
-    #Setup Notifications
+    #Setup Notifications for entities to push alerts to
     confParser = setupNotifications()
     
     #validate all of the needed plugins loaded
