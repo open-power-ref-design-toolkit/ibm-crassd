@@ -71,14 +71,15 @@ mkdir -p $DESTDIR/bin/ppc64le
 mkdir -p $DESTDIR/etc
 mkdir -p $DESTDIR/lib
 mkdir -p $RPM_BUILD_ROOT/usr/lib/systemd/system
+mkdir -p $RPM_BUILD_ROOT/usr/lib/systemd/system-preset
 
 %{__make} install
 
 cp ibm-crassd/*.py $DESTDIR/bin
 cp -r ibm-crassd/plugins/* $DESTDIR/bin/plugins
 cp ibm-crassd/ibm-crassd.config $DESTDIR/etc
-cp ibm-crassd/ibmcrassd.service $RPM_BUILD_ROOT/usr/lib/systemd/system
-cp ibm-crassd/85-ibm-crassd.preset $RPM_BUILD_ROOT/usr/lib/systemd/system-preset
+cp ibm-crassd.service $RPM_BUILD_ROOT/usr/lib/systemd/system
+cp 85-ibm-crassd.preset $RPM_BUILD_ROOT/usr/lib/systemd/system-preset
 cp errl/ppc64le/errl $DESTDIR/bin/ppc64le
 #cp rastools/gard $DESTDIR/bin/ppc64le
 #cp rastools/putscom $DESTDIR/bin/ppc64le
