@@ -54,7 +54,7 @@
         "FQPSPAA0004I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Canister/Appliance",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPAA0004I",
             "ComponentInstance": null,
@@ -71,7 +71,7 @@
         "FQPSPAA0005I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Canister/Appliance",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPAA0005I",
             "ComponentInstance": null,
@@ -241,7 +241,7 @@
         "FQPSPCA0005F": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Cooling",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCA0005F",
             "ComponentInstance": null,
@@ -258,7 +258,7 @@
         "FQPSPCA0006I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Cooling",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCA0006I",
             "ComponentInstance": null,
@@ -275,7 +275,7 @@
         "FQPSPCA0007I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Cooling",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCA0007I",
             "ComponentInstance": null,
@@ -292,7 +292,7 @@
         "FQPSPCA0008I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Cooling",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCA0008I",
             "ComponentInstance": null,
@@ -309,7 +309,7 @@
         "FQPSPCA0009I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Cooling",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCA0009I",
             "ComponentInstance": null,
@@ -326,7 +326,7 @@
         "FQPSPCA0010I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Cooling",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCA0010I",
             "ComponentInstance": null,
@@ -343,7 +343,7 @@
         "FQPSPCA0011I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Cooling",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCA0011I",
             "ComponentInstance": null,
@@ -360,7 +360,7 @@
         "FQPSPCA0012I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Cooling",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCA0012I",
             "ComponentInstance": null,
@@ -394,7 +394,7 @@
         "FQPSPCA0014I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Cooling",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCA0014I",
             "ComponentInstance": null,
@@ -479,7 +479,7 @@
         "FQPSPCA0019I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Cooling",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCA0019I",
             "ComponentInstance": null,
@@ -496,7 +496,7 @@
         "FQPSPCA0020I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Cooling",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCA0020I",
             "ComponentInstance": null,
@@ -513,7 +513,7 @@
         "FQPSPCA0021I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Cooling",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCA0021I",
             "ComponentInstance": null,
@@ -530,7 +530,7 @@
         "FQPSPCA0022I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Cooling",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCA0022I",
             "ComponentInstance": null,
@@ -547,7 +547,7 @@
         "FQPSPCA0023I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Cooling",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCA0023I",
             "ComponentInstance": null,
@@ -564,7 +564,7 @@
         "FQPSPCA0024I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Cooling",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCA0024I",
             "ComponentInstance": null,
@@ -581,7 +581,7 @@
         "FQPSPCA0025I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Cooling",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCA0025I",
             "ComponentInstance": null,
@@ -598,7 +598,7 @@
         "FQPSPCA0026I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Cooling",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCA0026I",
             "ComponentInstance": null,
@@ -615,7 +615,7 @@
         "FQPSPCA0027I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Cooling",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCA0027I",
             "ComponentInstance": null,
@@ -649,7 +649,7 @@
         "FQPSPCA0029I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Cooling",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCA0029I",
             "ComponentInstance": null,
@@ -734,7 +734,7 @@
         "FQPSPCA0034I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Cooling",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCA0034I",
             "ComponentInstance": null,
@@ -751,7 +751,7 @@
         "FQPSPCA0035I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Cooling",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCA0035I",
             "ComponentInstance": null,
@@ -768,7 +768,7 @@
         "FQPSPCA0036I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Cooling",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCA0036I",
             "ComponentInstance": null,
@@ -785,7 +785,7 @@
         "FQPSPCA0037I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Cooling",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCA0037I",
             "ComponentInstance": null,
@@ -802,7 +802,7 @@
         "FQPSPCA0038I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Cooling",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCA0038I",
             "ComponentInstance": null,
@@ -819,7 +819,7 @@
         "FQPSPCA0039I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Cooling",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCA0039I",
             "ComponentInstance": null,
@@ -836,7 +836,7 @@
         "FQPSPCA0040I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Cooling",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCA0040I",
             "ComponentInstance": null,
@@ -853,7 +853,7 @@
         "FQPSPCA0041I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Cooling",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCA0041I",
             "ComponentInstance": null,
@@ -870,7 +870,7 @@
         "FQPSPCA0042I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Cooling",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCA0042I",
             "ComponentInstance": null,
@@ -887,7 +887,7 @@
         "FQPSPCA0043I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Cooling",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCA0043I",
             "ComponentInstance": null,
@@ -904,7 +904,7 @@
         "FQPSPCA0044I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Cooling",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCA0044I",
             "ComponentInstance": null,
@@ -921,7 +921,7 @@
         "FQPSPCA0045I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Cooling",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCA0045I",
             "ComponentInstance": null,
@@ -938,7 +938,7 @@
         "FQPSPCA0046I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Cooling",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCA0046I",
             "ComponentInstance": null,
@@ -955,7 +955,7 @@
         "FQPSPCA0047I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Cooling",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCA0047I",
             "ComponentInstance": null,
@@ -972,7 +972,7 @@
         "FQPSPCA0048I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Cooling",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCA0048I",
             "ComponentInstance": null,
@@ -989,7 +989,7 @@
         "FQPSPCA0049I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Cooling",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCA0049I",
             "ComponentInstance": null,
@@ -1006,7 +1006,7 @@
         "FQPSPCA0050I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Cooling",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCA0050I",
             "ComponentInstance": null,
@@ -1023,7 +1023,7 @@
         "FQPSPCA0051I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Cooling",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCA0051I",
             "ComponentInstance": null,
@@ -1040,7 +1040,7 @@
         "FQPSPCA0052I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Cooling",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCA0052I",
             "ComponentInstance": null,
@@ -1057,7 +1057,7 @@
         "FQPSPCA0053I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Cooling",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCA0053I",
             "ComponentInstance": null,
@@ -1074,7 +1074,7 @@
         "FQPSPCA0054I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Cooling",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCA0054I",
             "ComponentInstance": null,
@@ -1091,7 +1091,7 @@
         "FQPSPCA0055I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Cooling",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCA0055I",
             "ComponentInstance": null,
@@ -1295,7 +1295,7 @@
         "FQPSPCA0067F": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Cooling",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCA0067F",
             "ComponentInstance": null,
@@ -1312,7 +1312,7 @@
         "FQPSPCA0068F": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Cooling",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCA0068F",
             "ComponentInstance": null,
@@ -1329,7 +1329,7 @@
         "FQPSPCA0069F": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Cooling",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCA0069F",
             "ComponentInstance": null,
@@ -1346,7 +1346,7 @@
         "FQPSPCA0070F": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Cooling",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCA0070F",
             "ComponentInstance": null,
@@ -1380,7 +1380,7 @@
         "FQPSPCR0001I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Systems Management - Core / Virtual Appliance",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCR0001I",
             "ComponentInstance": null,
@@ -1618,7 +1618,7 @@
         "FQPSPCR0015I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Systems Management - Core / Virtual Appliance",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCR0015I",
             "ComponentInstance": null,
@@ -1635,7 +1635,7 @@
         "FQPSPCR0016I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Systems Management - Core / Virtual Appliance",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCR0016I",
             "ComponentInstance": null,
@@ -1652,7 +1652,7 @@
         "FQPSPCR0017I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Systems Management - Core / Virtual Appliance",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCR0017I",
             "ComponentInstance": null,
@@ -1669,7 +1669,7 @@
         "FQPSPCR0018I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Systems Management - Core / Virtual Appliance",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCR0018I",
             "ComponentInstance": null,
@@ -1686,7 +1686,7 @@
         "FQPSPCR0019I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Systems Management - Core / Virtual Appliance",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCR0019I",
             "ComponentInstance": null,
@@ -1703,7 +1703,7 @@
         "FQPSPCR0020F": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Systems Management - Core / Virtual Appliance",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCR0020F",
             "ComponentInstance": null,
@@ -1720,7 +1720,7 @@
         "FQPSPCR0021F": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Systems Management - Core / Virtual Appliance",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCR0021F",
             "ComponentInstance": null,
@@ -1737,7 +1737,7 @@
         "FQPSPCR0022F": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Systems Management - Core / Virtual Appliance",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCR0022F",
             "ComponentInstance": null,
@@ -1873,7 +1873,7 @@
         "FQPSPCR0030F": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Systems Management - Core / Virtual Appliance",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCR0030F",
             "ComponentInstance": null,
@@ -1890,7 +1890,7 @@
         "FQPSPCR0031I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Systems Management - Core / Virtual Appliance",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCR0031I",
             "ComponentInstance": null,
@@ -1907,7 +1907,7 @@
         "FQPSPCR0032I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Systems Management - Core / Virtual Appliance",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPCR0032I",
             "ComponentInstance": null,
@@ -1958,7 +1958,7 @@
         "FQPSPEM0000I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Systems Management - Events / Monitoring",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPEM0000I",
             "ComponentInstance": null,
@@ -1975,7 +1975,7 @@
         "FQPSPEM0002I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Systems Management - Events / Monitoring",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPEM0002I",
             "ComponentInstance": null,
@@ -2043,7 +2043,7 @@
         "FQPSPMA0001I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Memory",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPMA0001I",
             "ComponentInstance": null,
@@ -2060,7 +2060,7 @@
         "FQPSPMA0002I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Memory",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPMA0002I",
             "ComponentInstance": null,
@@ -2077,7 +2077,7 @@
         "FQPSPMA0003I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Memory",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPMA0003I",
             "ComponentInstance": null,
@@ -2094,7 +2094,7 @@
         "FQPSPMA0004I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Memory",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPMA0004I",
             "ComponentInstance": null,
@@ -2111,7 +2111,7 @@
         "FQPSPMA0005I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Memory",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPMA0005I",
             "ComponentInstance": null,
@@ -2128,7 +2128,7 @@
         "FQPSPMA0006I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Memory",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPMA0006I",
             "ComponentInstance": null,
@@ -2145,7 +2145,7 @@
         "FQPSPMA0007I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Memory",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPMA0007I",
             "ComponentInstance": null,
@@ -2162,7 +2162,7 @@
         "FQPSPMA0008I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Memory",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPMA0008I",
             "ComponentInstance": null,
@@ -2179,7 +2179,7 @@
         "FQPSPMA0009I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Memory",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPMA0009I",
             "ComponentInstance": null,
@@ -2196,7 +2196,7 @@
         "FQPSPMA0010I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Memory",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPMA0010I",
             "ComponentInstance": null,
@@ -2213,7 +2213,7 @@
         "FQPSPMA0011I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Memory",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPMA0011I",
             "ComponentInstance": null,
@@ -2230,7 +2230,7 @@
         "FQPSPMA0012I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Memory",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPMA0012I",
             "ComponentInstance": null,
@@ -2247,7 +2247,7 @@
         "FQPSPMA0013I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Memory",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPMA0013I",
             "ComponentInstance": null,
@@ -2264,7 +2264,7 @@
         "FQPSPMA0014I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Memory",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPMA0014I",
             "ComponentInstance": null,
@@ -2281,7 +2281,7 @@
         "FQPSPMA0015I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Memory",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPMA0015I",
             "ComponentInstance": null,
@@ -2298,7 +2298,7 @@
         "FQPSPMA0016I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Memory",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPMA0016I",
             "ComponentInstance": null,
@@ -2315,7 +2315,7 @@
         "FQPSPMA0017I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Memory",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPMA0017I",
             "ComponentInstance": null,
@@ -2332,7 +2332,7 @@
         "FQPSPMA0018I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Memory",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPMA0018I",
             "ComponentInstance": null,
@@ -2349,7 +2349,7 @@
         "FQPSPMA0019I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Memory",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPMA0019I",
             "ComponentInstance": null,
@@ -2366,7 +2366,7 @@
         "FQPSPMA0020I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Memory",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPMA0020I",
             "ComponentInstance": null,
@@ -2383,7 +2383,7 @@
         "FQPSPMA0021I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Memory",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPMA0021I",
             "ComponentInstance": null,
@@ -2451,7 +2451,7 @@
         "FQPSPMA0026I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Memory",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPMA0026I",
             "ComponentInstance": null,
@@ -2502,7 +2502,7 @@
         "FQPSPMA0029I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Memory",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPMA0029I",
             "ComponentInstance": null,
@@ -2519,7 +2519,7 @@
         "FQPSPMA0030I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Memory",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPMA0030I",
             "ComponentInstance": null,
@@ -2553,7 +2553,7 @@
         "FQPSPMA0032F": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Memory",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPMA0032F",
             "ComponentInstance": null,
@@ -2570,7 +2570,7 @@
         "FQPSPMA0033I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Memory",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPMA0033I",
             "ComponentInstance": null,
@@ -2587,7 +2587,7 @@
         "FQPSPMA0034F": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Memory",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPMA0034F",
             "ComponentInstance": null,
@@ -2604,7 +2604,7 @@
         "FQPSPMA0035F": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Memory",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPMA0035F",
             "ComponentInstance": null,
@@ -2621,7 +2621,7 @@
         "FQPSPMA0036I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Memory",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPMA0036I",
             "ComponentInstance": null,
@@ -2638,7 +2638,7 @@
         "FQPSPMA0037I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Memory",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPMA0037I",
             "ComponentInstance": null,
@@ -2689,7 +2689,7 @@
         "FQPSPMA0040I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Memory",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPMA0040I",
             "ComponentInstance": null,
@@ -2723,7 +2723,7 @@
         "FQPSPMA0042I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Memory",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPMA0042I",
             "ComponentInstance": null,
@@ -2791,7 +2791,7 @@
         "FQPSPMA0046I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Memory",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPMA0046I",
             "ComponentInstance": null,
@@ -2808,7 +2808,7 @@
         "FQPSPMA0047I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Memory",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPMA0047I",
             "ComponentInstance": null,
@@ -2893,7 +2893,7 @@
         "FQPSPMA0052I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Memory",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPMA0052I",
             "ComponentInstance": null,
@@ -2910,7 +2910,7 @@
         "FQPSPMA0053I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Memory",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPMA0053I",
             "ComponentInstance": null,
@@ -2927,7 +2927,7 @@
         "FQPSPMA0054I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Memory",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPMA0054I",
             "ComponentInstance": null,
@@ -3012,7 +3012,7 @@
         "FQPSPNM0000F": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Systems Management - Network Management",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPNM0000F",
             "ComponentInstance": null,
@@ -3063,7 +3063,7 @@
         "FQPSPPU0002I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Processing",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPU0002I",
             "ComponentInstance": null,
@@ -3080,7 +3080,7 @@
         "FQPSPPU0003I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Processing",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPU0003I",
             "ComponentInstance": null,
@@ -3148,7 +3148,7 @@
         "FQPSPPU0007I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Processing",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPU0007I",
             "ComponentInstance": null,
@@ -3165,7 +3165,7 @@
         "FQPSPPU0008I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Processing",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPU0008I",
             "ComponentInstance": null,
@@ -3182,7 +3182,7 @@
         "FQPSPPU0009I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Processing",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPU0009I",
             "ComponentInstance": null,
@@ -3199,7 +3199,7 @@
         "FQPSPPU0010I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Processing",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPU0010I",
             "ComponentInstance": null,
@@ -3216,7 +3216,7 @@
         "FQPSPPU0011I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Processing",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPU0011I",
             "ComponentInstance": null,
@@ -3233,7 +3233,7 @@
         "FQPSPPU0012I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Processing",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPU0012I",
             "ComponentInstance": null,
@@ -3250,7 +3250,7 @@
         "FQPSPPU0013I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Processing",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPU0013I",
             "ComponentInstance": null,
@@ -3267,7 +3267,7 @@
         "FQPSPPU0014I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Processing",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPU0014I",
             "ComponentInstance": null,
@@ -3284,7 +3284,7 @@
         "FQPSPPU0015I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Processing",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPU0015I",
             "ComponentInstance": null,
@@ -3318,7 +3318,7 @@
         "FQPSPPU0017I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Processing",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPU0017I",
             "ComponentInstance": null,
@@ -3403,7 +3403,7 @@
         "FQPSPPU0022I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Processing",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPU0022I",
             "ComponentInstance": null,
@@ -3420,7 +3420,7 @@
         "FQPSPPU0023I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Processing",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPU0023I",
             "ComponentInstance": null,
@@ -3437,7 +3437,7 @@
         "FQPSPPU0024I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Processing",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPU0024I",
             "ComponentInstance": null,
@@ -3454,7 +3454,7 @@
         "FQPSPPU0025I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Processing",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPU0025I",
             "ComponentInstance": null,
@@ -3471,7 +3471,7 @@
         "FQPSPPU0026I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Processing",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPU0026I",
             "ComponentInstance": null,
@@ -3488,7 +3488,7 @@
         "FQPSPPU0027I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Processing",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPU0027I",
             "ComponentInstance": null,
@@ -3505,7 +3505,7 @@
         "FQPSPPU0028I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Processing",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPU0028I",
             "ComponentInstance": null,
@@ -3522,7 +3522,7 @@
         "FQPSPPU0029I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Processing",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPU0029I",
             "ComponentInstance": null,
@@ -3539,7 +3539,7 @@
         "FQPSPPU0030I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Processing",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPU0030I",
             "ComponentInstance": null,
@@ -3556,7 +3556,7 @@
         "FQPSPPU0031I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Processing",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPU0031I",
             "ComponentInstance": null,
@@ -3573,7 +3573,7 @@
         "FQPSPPU0032I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Processing",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPU0032I",
             "ComponentInstance": null,
@@ -3590,7 +3590,7 @@
         "FQPSPPU0038I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Processing",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPU0038I",
             "ComponentInstance": null,
@@ -3607,7 +3607,7 @@
         "FQPSPPU0039I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Processing",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPU0039I",
             "ComponentInstance": null,
@@ -3624,7 +3624,7 @@
         "FQPSPPU0040I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Processing",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPU0040I",
             "ComponentInstance": null,
@@ -3658,7 +3658,7 @@
         "FQPSPPU0042I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Processing",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPU0042I",
             "ComponentInstance": null,
@@ -3675,7 +3675,7 @@
         "FQPSPPU0043I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Processing",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPU0043I",
             "ComponentInstance": null,
@@ -3828,7 +3828,7 @@
         "FQPSPPU0052F": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Processing",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPU0052F",
             "ComponentInstance": null,
@@ -3845,7 +3845,7 @@
         "FQPSPPU0053I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Processing",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPU0053I",
             "ComponentInstance": null,
@@ -3862,7 +3862,7 @@
         "FQPSPPU0054I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Processing",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPU0054I",
             "ComponentInstance": null,
@@ -3896,7 +3896,7 @@
         "FQPSPPU0056I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Processing",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPU0056I",
             "ComponentInstance": null,
@@ -3913,7 +3913,7 @@
         "FQPSPPU0057F": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Processing",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPU0057F",
             "ComponentInstance": null,
@@ -4049,7 +4049,7 @@
         "FQPSPPU0065I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Processing",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPU0065I",
             "ComponentInstance": null,
@@ -4066,7 +4066,7 @@
         "FQPSPPU0066F": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Processing",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPU0066F",
             "ComponentInstance": null,
@@ -4083,7 +4083,7 @@
         "FQPSPPU0067I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Processing",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPU0067I",
             "ComponentInstance": null,
@@ -4100,7 +4100,7 @@
         "FQPSPPU0068F": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Processing",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPU0068F",
             "ComponentInstance": null,
@@ -4117,7 +4117,7 @@
         "FQPSPPU0069I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Processing",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPU0069I",
             "ComponentInstance": null,
@@ -4134,7 +4134,7 @@
         "FQPSPPU0070I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Processing",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPU0070I",
             "ComponentInstance": null,
@@ -4151,7 +4151,7 @@
         "FQPSPPU0071I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Processing",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPU0071I",
             "ComponentInstance": null,
@@ -4168,7 +4168,7 @@
         "FQPSPPU0072I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Processing",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPU0072I",
             "ComponentInstance": null,
@@ -4185,7 +4185,7 @@
         "FQPSPPU0073I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Processing",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPU0073I",
             "ComponentInstance": null,
@@ -4219,7 +4219,7 @@
         "FQPSPPU0074I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Processing",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPU0074I",
             "ComponentInstance": null,
@@ -4321,7 +4321,7 @@
         "FQPSPPU0080I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Processing",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPU0080I",
             "ComponentInstance": null,
@@ -4389,7 +4389,7 @@
         "FQPSPPU0084I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Processing",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPU0084I",
             "ComponentInstance": null,
@@ -4423,7 +4423,7 @@
         "FQPSPPU0086I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Processing",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPU0086I",
             "ComponentInstance": null,
@@ -4559,7 +4559,7 @@
         "FQPSPPW0001I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Power",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPW0001I",
             "ComponentInstance": null,
@@ -4576,7 +4576,7 @@
         "FQPSPPW0002I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Power",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPW0002I",
             "ComponentInstance": null,
@@ -4593,7 +4593,7 @@
         "FQPSPPW0003I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Power",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPW0003I",
             "ComponentInstance": null,
@@ -4610,7 +4610,7 @@
         "FQPSPPW0004I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Power",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPW0004I",
             "ComponentInstance": null,
@@ -4627,7 +4627,7 @@
         "FQPSPPW0005I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Power",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPW0005I",
             "ComponentInstance": null,
@@ -4780,7 +4780,7 @@
         "FQPSPPW0014I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Power",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPW0014I",
             "ComponentInstance": null,
@@ -4814,7 +4814,7 @@
         "FQPSPPW0016I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Power",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPW0016I",
             "ComponentInstance": null,
@@ -4831,7 +4831,7 @@
         "FQPSPPW0017I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Power",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPW0017I",
             "ComponentInstance": null,
@@ -4848,7 +4848,7 @@
         "FQPSPPW0018I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Power",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPW0018I",
             "ComponentInstance": null,
@@ -4865,7 +4865,7 @@
         "FQPSPPW0019I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Power",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPW0019I",
             "ComponentInstance": null,
@@ -4882,7 +4882,7 @@
         "FQPSPPW0020I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Power",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPW0020I",
             "ComponentInstance": null,
@@ -4899,7 +4899,7 @@
         "FQPSPPW0021I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Power",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPW0021I",
             "ComponentInstance": null,
@@ -5188,7 +5188,7 @@
         "FQPSPPW0038F": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Power",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPPW0038F",
             "ComponentInstance": null,
@@ -5613,7 +5613,7 @@
         "FQPSPSB0000I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "System Board",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPSB0000I",
             "ComponentInstance": null,
@@ -5681,7 +5681,7 @@
         "FQPSPSB0003I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "System Board",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPSB0003I",
             "ComponentInstance": null,
@@ -5698,7 +5698,7 @@
         "FQPSPSB0004I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "System Board",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPSB0004I",
             "ComponentInstance": null,
@@ -5732,7 +5732,7 @@
         "FQPSPSB0006I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "System Board",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPSB0006I",
             "ComponentInstance": null,
@@ -5766,7 +5766,7 @@
         "FQPSPSB0007I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "System Board",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPSB0007I",
             "ComponentInstance": null,
@@ -5783,7 +5783,7 @@
         "FQPSPSB0008I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "System Board",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPSB0008I",
             "ComponentInstance": null,
@@ -5817,7 +5817,7 @@
         "FQPSPSB0009I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "System Board",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPSB0009I",
             "ComponentInstance": null,
@@ -5851,7 +5851,7 @@
         "FQPSPSB0010I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "System Board",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPSB0010I",
             "ComponentInstance": null,
@@ -5936,7 +5936,7 @@
         "FQPSPSD0001I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Client Data Storage Device",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPSD0001I",
             "ComponentInstance": null,
@@ -5970,7 +5970,7 @@
         "FQPSPSD0003I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Client Data Storage Device",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPSD0003I",
             "ComponentInstance": null,
@@ -6004,7 +6004,7 @@
         "FQPSPSD0005I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Client Data Storage Device",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPSD0005I",
             "ComponentInstance": null,
@@ -6021,7 +6021,7 @@
         "FQPSPSD0006I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Client Data Storage Device",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPSD0006I",
             "ComponentInstance": null,
@@ -6038,7 +6038,7 @@
         "FQPSPSD0007I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Client Data Storage Device",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPSD0007I",
             "ComponentInstance": null,
@@ -6157,7 +6157,7 @@
         "FQPSPSD0014I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Client Data Storage Device",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPSD0014I",
             "ComponentInstance": null,
@@ -6174,7 +6174,7 @@
         "FQPSPSD0015I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Client Data Storage Device",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPSD0015I",
             "ComponentInstance": null,
@@ -6191,7 +6191,7 @@
         "FQPSPSD0016I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Client Data Storage Device",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPSD0016I",
             "ComponentInstance": null,
@@ -6208,7 +6208,7 @@
         "FQPSPSD0017I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Client Data Storage Device",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPSD0017I",
             "ComponentInstance": null,
@@ -6225,7 +6225,7 @@
         "FQPSPSD0018I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Client Data Storage Device",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPSD0018I",
             "ComponentInstance": null,
@@ -6242,7 +6242,7 @@
         "FQPSPSD0019I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Client Data Storage Device",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPSD0019I",
             "ComponentInstance": null,
@@ -6310,7 +6310,7 @@
         "FQPSPSE0001F": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Systems Management - Security",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPSE0001F",
             "ComponentInstance": null,
@@ -6344,7 +6344,7 @@
         "FQPSPSE0003I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Systems Management - Security",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPSE0003I",
             "ComponentInstance": null,
@@ -6361,7 +6361,7 @@
         "FQPSPTR0000I": {
             "AffectedLEDs": null,
             "AffectedSubsystem": "Time Reference",
-            "CSMEnabled": false,
+            "CSMEnabled": true,
             "CallHomeCandidate": false,
             "CommonEventID": "FQPSPTR0000I",
             "ComponentInstance": null,
