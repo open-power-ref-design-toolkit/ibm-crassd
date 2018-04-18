@@ -34,7 +34,7 @@ import math
 import config
 from config import *
 import imp
-import notificationlistener
+
 
 def sigHandler(signum, frame):
     """
@@ -67,7 +67,7 @@ def errorHandler(severity, message):
          @param message: string, the message to post in the syslog
     """
     print("Creating syslog entry")
-    syslog.openlog(ident="IBMPowerHWMonitor", logoption=syslog.LOG_PID|syslog.LOG_NOWAIT)
+    syslog.openlog(ident="ibm-crassd", logoption=syslog.LOG_PID|syslog.LOG_NOWAIT)
     syslog.syslog(severity, message)    
 
   
@@ -432,7 +432,7 @@ def createNodeList(confParser):
         @confParser: The configuration parser object with the nodes entity
         @return: The high level list of nodes
     """
-    
+    needWebsocket = False
     try:
         nodes = dict(confParser.items('nodes'))
         for key in nodes:
@@ -442,6 +442,7 @@ def createNodeList(confParser):
                     mynodelist[-1]['username'] = "ADMIN"
                     mynodelist[-1]['password'] = "ADMIN"
                 elif mynodelist[-1]['accessType'] == 'openbmcRest':
+                    needWebsocket = True
                     mynodelist[-1]['username'] = "root"
                     mynodelist[-1]['password'] = "0penBmc"
             mynodelist[-1]['dupTimeIDList'] = []
@@ -451,13 +452,18 @@ def createNodeList(confParser):
                 notifyList[entity][mynodelist[-1]['bmcHostname']] = {
                     'lastLogTime': mynodelist[-1]['lastLogTime'],
                     'dupTimeIDList': mynodelist[-1]['dupTimeIDList']}
-       
+                
     except Exception as e:
         exc_type, exc_obj, exc_tb = sys.exc_info()
         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
         print("exception: ", exc_type, fname, exc_tb.tb_lineno)
         print(e)
         sys.exit()
+    
+    #load optional module for monitoring openbmc systems
+    if needWebsocket:
+        import notificationlistener
+    
     
 def validatePluginNotifications(confParser):
     """
@@ -484,8 +490,6 @@ def setupNotifications():
     """ 
     #read the config file
     confParser = configparser.ConfigParser()
-    global notifyList
-    notifyList = {}
     try:
         if os.path.exists('/opt/ibm/ras/etc/ibm-crassd.config'):
             confParser.read('/opt/ibm/ras/etc/ibm-crassd.config')
@@ -581,7 +585,7 @@ def initialize():
         maxThreads = len(mynodelist)
     else:
         numPasses = math.ceil(len(mynodelist)/maxThreads)
-    minPollingInterval = 15*numPasses
+    minPollingInterval = 25*numPasses
     for i in range(maxThreads):
         print("Creating thread " + str(i))
 
