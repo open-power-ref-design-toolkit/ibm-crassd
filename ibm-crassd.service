@@ -27,6 +27,7 @@ KillMode=mixed
 KillSignal=SIGTERM
 TimeoutStopSec=10
 SendSIGKILL=yes
+SyslogIdentifier=ibm-crassd
 
 [Install]
 WantedBy=multi-user.target
