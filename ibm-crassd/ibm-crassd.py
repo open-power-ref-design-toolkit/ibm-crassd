@@ -49,7 +49,7 @@ def sigHandler(signum, frame):
         global killNow
         killNow = True
     elif(signum == signal.SIGUSR1):
-        print("Queue size: " + str(nodes2poll.qsize()))
+        errorHandler(syslog.LOG_INFO,"Queue size: " + str(nodes2poll.qsize()))
     else:
         print("Signal received" + signum)
         
