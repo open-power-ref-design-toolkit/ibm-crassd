@@ -1,2 +1,2 @@
-# crassd service default
-enable crassd.service
+#ibm-crassd service default
+enable ibm-crassd.service
