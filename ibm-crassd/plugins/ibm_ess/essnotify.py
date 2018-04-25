@@ -53,7 +53,7 @@ def initialize():
         Initializes the plugin and checks to see if the powerhw component of mmhealth has been initialized.
         
     """
-    result = subprocess.check_output(['mmhealth', 'node', 'show', 'powerhw']).decode('utf-8')
+    result = subprocess.check_output(['/usr/lpp/mmfs/bin/mmhealth', 'node', 'show', 'powerhw']).decode('utf-8')
     lines = result.split('\n')
     healthyAlert = {'CerID': 'FQPSPPW0018M', 'compInstance': 1}
     for line in lines:
