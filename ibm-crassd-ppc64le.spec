@@ -3,7 +3,7 @@
 Summary: IBM POWER LC Cluster RAS Service Package
 Name: ibm-crassd
 Version: 0.7
-Release: 3
+Release: 4
 License: BSD
 Group: System Environment/Base
 BuildArch: ppc64le
