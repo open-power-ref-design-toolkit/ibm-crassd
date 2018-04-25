@@ -462,6 +462,7 @@ def createNodeList(confParser):
     
     #load optional module for monitoring openbmc systems
     if needWebsocket:
+        global notificationlistener
         import notificationlistener
     
     
