@@ -501,11 +501,14 @@ def setupNotifications():
                                         "receiveEntityDown":False,
                                         "failedFirstTry": False,
                                         "successfullyReported": True}
+                    if confParser.has_section(key):
+                        pluginConfSettings = {key: dict(confParser.items(key))}
+                        config.pluginConfigs.update(pluginConfSettings)
         else:
             errorHandler(syslog.LOG_CRIT, "Configuration file not found. Exiting.")
             sys.exit()
     except KeyError:
-        errorHandler(syslog.LOG_ERR, "No section: notify in file ibmpowerhwmon.conf. Alerts will not be forwarded. Terminating")
+        errorHandler(syslog.LOG_ERR, "No section: notify in file ibm-crassd.conf. Alerts will not be forwarded. Terminating")
         sys.exit() 
     
     #get the nodes to push alerts to

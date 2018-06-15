@@ -39,3 +39,6 @@ networkErrorList = ['FQPSPIN0000M','FQPSPIN0001M', 'FQPSPIN0002M','FQPSPIN0003M'
 
 global pluginPolicies
 pluginPolicies = {}
+
+global pluginConfigs
+pluginConfigs = {}
