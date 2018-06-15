@@ -46,7 +46,13 @@ def notifyCSM(cerEvent, impactedNode, entityAttr):
          @param entityAttr: dictionary, contains the list of known attributes for the entity to report to
          @return: True if notification was successful, false if it was unable to send the alert
     """
-    
+    try:
+        host=config.pluginConfigs['csm']['host']
+        port=config.pluginConfigs['csm']['port']
+    except KeyError:
+        errorHandler(syslog.LOG_ERR, "Host and port configurations missing for CSM plugin. Defaulting to 127.0.0.1:4213")
+        host="127.0.0.1"
+        port="4213"
     httpHeader = {'Content-Type':'application/json'}
     with config.lock:
         failedFirstFlag = entityAttr['csm']['failedFirstTry']
@@ -69,7 +75,8 @@ def notifyCSM(cerEvent, impactedNode, entityAttr):
     if("additionalDetails" in cerEvent):
         eventEntry['raw_data'] = eventEntry['raw_data'] + cerEvent['sensor'] + " || " + cerEvent['state'] + " || " + cerEvent['additionalDetails']
     try:
-        r = requests.post('http://127.0.0.1:4213/csmi/V1.0/ras/event/create', headers=httpHeader, data=json.dumps(eventEntry), timeout=30)
+        csmurl = 'http://{host}:{port}/csmi/V1.0/ras/event/create'.format(host=host, port=port)
+        r = requests.post(csmurl, headers=httpHeader, data=json.dumps(eventEntry), timeout=30)
         if (r.status_code != 200):
 
             with config.lock:
