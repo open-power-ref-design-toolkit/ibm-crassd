@@ -28,14 +28,23 @@ def initialize():
 def createArgString(cerEvent):
     argString = ""
     index = 0
-    cerMessage = config.pluginPolicies['csmPolicy'][cerEvent['CerID']]['Message']
+    try:
+        cerMessage = config.pluginPolicies['csmPolicy'][cerEvent['CerID']]['Message']
+    except KeyError:
+        config.errorHandler(syslog.LOG_ERR, "Event ID {cerID} missing in CSM Policy Table.".format(cerID=cerEvent['CerID']))
+        cerMessage = cerEvent['message']
     argInstance = 0
     while cerMessage.find('$(', index) != -1:
         index = cerMessage.find('$(', index) + 2
         arg = cerMessage[index:cerMessage.find(')',index)]
         if argString != "":
             argString = argString +','
-        argString = argString + arg +'=' + cerEvent['ComponentInstance'].split(',')[argInstance]
+        try:
+            argString = argString + arg +'=' + cerEvent['compInstance'].split(',')[argInstance]
+        except IndexError:
+            config.errorHandler(syslog.LOG_ERR, "CSM Policy table has more arguments than provided by the alert.")
+            argString = ""
+            break
         argInstance += 1
     return argString
 def notifyCSM(cerEvent, impactedNode, entityAttr):
@@ -102,6 +111,8 @@ def notifyCSM(cerEvent, impactedNode, entityAttr):
             with config.lock:
                 entityAttr['csm']['receiveEntityDown'] = True;
         return False   
+    except IndexError:
+        traceback.print_stack()
     
      
 def loadPolicyTable(pathToPolicyTable):
