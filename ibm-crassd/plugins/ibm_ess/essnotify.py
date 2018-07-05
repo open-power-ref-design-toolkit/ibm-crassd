@@ -11,7 +11,7 @@ def errorHandler(severity, message):
          @param message: string, the message to post in the syslog
     """
     print("Creating syslog entry")
-    syslog.openlog(ident="IBMPowerHWMonitor", logoption=syslog.LOG_PID|syslog.LOG_NOWAIT)
+    syslog.openlog(ident="ibm-crassd", logoption=syslog.LOG_PID|syslog.LOG_NOWAIT)
     syslog.syslog(severity, message)    
 
 def notifymmhealth(cerEvent, impactedNode, entityAttr):
