@@ -18,7 +18,7 @@ try:
 except ImportError:
     import queue
 import threading
-
+import syslog
 
 global nodes2poll
 nodes2poll = queue.Queue()
@@ -46,3 +46,13 @@ pluginConfigs = {}
 global pluginVars
 pluginVars = {}
 
+def errorHandler(severity, message):
+    """
+         Used to handle creating entries in the system log for this service
+           
+         @param severity: the severity of the syslog entry to create
+         @param message: string, the message to post in the syslog
+    """
+    print("Creating syslog entry")
+    syslog.openlog(ident="ibm-crassd", logoption=syslog.LOG_PID|syslog.LOG_NOWAIT)
+    syslog.syslog(severity, message)    
