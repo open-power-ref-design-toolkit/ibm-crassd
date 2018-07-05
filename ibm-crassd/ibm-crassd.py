@@ -82,19 +82,18 @@ def updateEventDictionary(eventsDict):
         elif("error" in eventsDict[key]):
             newEventsDict[key] = eventsDict[key]
         else:
+            keyTranslator = {'CommonEventID': 'CerID', 'Message': 'message', 'LengthyDescription': 'lengthyDescription',
+                             'Serviceable':'serviceable', 'CallHomeCandidate': 'callHome', 'Severity': 'severity',
+                             'EventType': 'eventType', 'VMMigrationFlag':'vmMigration', 'AffectedSubsystem': 'subSystem', 
+                             'UserAction':'userAction', 'ComponentInstance': 'compInstance'}
             try:
-                commonEvent['CerID'] = eventsDict[key]['CommonEventID']
-                commonEvent['message'] = eventsDict[key]['Message']
-                commonEvent['lengthyDescription'] = eventsDict[key]['LengthyDescription']
-                commonEvent['serviceable'] = eventsDict[key]['Serviceable']
-                commonEvent['callHome'] = eventsDict[key]['CallHomeCandidate']
-                commonEvent['severity'] = eventsDict[key]['Severity']
-                commonEvent['eventType'] = eventsDict[key]['EventType']
-                commonEvent['vmMigration'] = eventsDict[key]['VMMigrationFlag']
-                commonEvent['subSystem'] = eventsDict[key]['AffectedSubsystem']
-                commonEvent['userAction'] = eventsDict[key]['UserAction']
-                commonEvent['timestamp'] = str(int(int(eventsDict[key]['timestamp'])/1000))
-                commonEvent['ComponentInstance'] = str(eventsDict[key]['ComponentInstance'])
+                for eventProperty in eventsDict[key]:
+                    if eventProperty in keyTranslator:
+                        commonEvent[keyTranslator[eventProperty]] = eventsDict[key][eventProperty]
+                    elif eventProperty == 'timestamp':
+                        commonEvent[eventProperty] = str(int(int(eventsDict[key]['timestamp'])/1000))
+                    else:
+                        commonEvent[eventProperty] = eventsDict[key][eventProperty]
                 newEventsDict[key] = commonEvent
             except KeyError:
                 print (key +' not found in events dictionary')
