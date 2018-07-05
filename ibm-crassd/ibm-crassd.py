@@ -155,6 +155,7 @@ def BMCEventProcessor():
             break
         else:
             node = nodes2poll.get()
+            eventList = {}
             name = threading.currentThread().getName()
             bmcHostname = node['bmcHostname']
             impactednode = node['xcatNodeName']
@@ -170,8 +171,11 @@ def BMCEventProcessor():
                         eventBytes = subprocess.check_output(['python', '/opt/ibm/ras/bin/openbmctool.py', '-H', bmcHostname, '-U', username, '-P', password,'-j','-t','/opt/ibm/ras/lib/policyTable.json', 'sel', 'print'])
                         eventList = eventBytes.decode('utf-8')
                     except subprocess.CalledProcessError as e:
-                        print(e.output)
-                    
+                        if e.returncode == 1:
+                            eventList = e.output
+                        else:
+                            errorHandler(syslog.LOG_ERR, "An unknown error has occurred when retrieving bmc alerts from {hostname}. Error Details: {msg}".format(hostname=impactednode, msg=e.message))
+                            continue
                     if eventList.find('{') != -1: #check for valid response
                         eventList = eventList[eventList.index('{'):]
                     else:
@@ -188,12 +192,11 @@ def BMCEventProcessor():
                     if eventList.find('{') != -1: #check for valid response
                         eventList = eventList[eventList.index('{'):] #keyboard terminate causing substring not found here
                     else:
-                        print('unable to get list of events from bmc')
-                        print(eventList)
+                        errorHandler(syslog.LOG_ERR, "An invalid response was received when retrieving bmc alerts from {hostname}. Response Details: {msg}".format(hostname=impactednode, msg=eventList))
 #                         sys.stdout.flush()
                         continue
                     eventsDict = json.loads(eventList)
-                    print("processing alerts")
+#                     print("processing alerts")
 #                     sys.stdout.flush()
                 else:
                     #use redfish
@@ -203,11 +206,12 @@ def BMCEventProcessor():
                 
                 #process the alerts
                 if (eventsDict['numAlerts'] == 0):
-                    #node poll was successful
+                    #node poll was successful and no alerts to process
                     node['pollFailedCount'] = 0
                     continue
                 else:
-                    for i in range(0, len(eventsDict)-1):
+                    #process the received alerts
+                    for i in range(len(eventsDict)-1):
                         if(killNow):
                             break
                         event = "event" +str(i)
