@@ -3,34 +3,37 @@ try:
     import thread
 except ImportError:
     import _thread as thread
-import time
+
 import openbmctool
 import ssl
 import json
 import config
+import syslog
 
 def on_message(ws, message):
     """
         websocket message handler
     """
-    print(message)
+#     print(message)
     global bmcHostname
     for node in config.mynodelist:
         if node['bmcHostname'] == bmcHostname:
             config.nodes2poll.put(node)
             break
 
-def on_error(ws, error):
+def on_error(ws, wserror):
     """
         websocket error handler
     """
-    print(error)
+    global bmcHostname
+    config.errorHandler(syslog.LOG_ERR, "Websocket error: {bmc}: {err}".format(bmc=bmcHostname, err=wserror))
 
 def on_close(ws):
     """
         websocket close event handler
     """
-    print("### closed ###")
+    global bmcHostname
+    config.errorHandler(syslog.LOG_INFO, "{bmc} websocket closed.".format(bmc=bmcHostname))
 
 def on_open(ws):
     """
