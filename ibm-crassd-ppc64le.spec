@@ -2,8 +2,8 @@
 %define _binaries_in_noarch_packages_terminate_build   0
 Summary: IBM POWER LC Cluster RAS Service Package
 Name: ibm-crassd
-Version: 0.7
-Release: 4
+Version: %{_version}
+Release: %{_release}
 License: BSD
 Group: System Environment/Base
 BuildArch: ppc64le
