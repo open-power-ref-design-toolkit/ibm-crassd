@@ -106,6 +106,9 @@ rm -rf $RPM_BUILD_ROOT
 /opt/ibm/ras/bin/plugins/ibm_ess/
 /opt/ibm/ras/bin/plugins/ibm_ess/essnotify.py
 /opt/ibm/ras/bin/plugins/ibm_ess/__init__.py
+/opt/ibm/ras/bin/plugins/logstash/
+/opt/ibm/ras/bin/plugins/logstash/logstashnotify.py
+/opt/ibm/ras/bin/plugins/logstash/__init__.py
 /opt/ibm/ras/bin/ppc64le/errl
 /usr/lib/systemd/system/ibm-crassd.service
 /usr/lib/systemd/system-preset/85-ibm-crassd.preset

@@ -42,3 +42,7 @@ pluginPolicies = {}
 
 global pluginConfigs
 pluginConfigs = {}
+
+global pluginVars
+pluginVars = {}
+
