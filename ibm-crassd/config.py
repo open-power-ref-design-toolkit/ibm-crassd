@@ -46,7 +46,11 @@ pluginConfigs = {}
 global pluginVars
 pluginVars = {}
 
-def errorHandler(severity, message):
+global configFileName
+configFileName = '/opt/ibm/ras/etc/ibm-crassd.config'
+updateNodeTimesfile = '/opt/ibm/ras/etc/updateNodes.ini'
+
+def errorLogger(severity, message):
     """
          Used to handle creating entries in the system log for this service
            

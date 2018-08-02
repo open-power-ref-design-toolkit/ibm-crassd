@@ -49,17 +49,54 @@ def sigHandler(signum, frame):
         global killNow
         killNow = True
     elif(signum == signal.SIGUSR1):
-        errorHandler(syslog.LOG_INFO,"Queue size: " + str(nodes2poll.qsize()))
+        errorLogger(syslog.LOG_INFO,"Queue size: " + str(nodes2poll.qsize()))
     else:
         print("Signal received" + signum)
         
-#setup the interrupt to handle SIGTERM, SIGINT
-signal.signal(signal.SIGTERM, sigHandler)
-signal.signal(signal.SIGINT, sigHandler)
-signal.signal(signal.SIGUSR1, sigHandler)
 
 
-def errorHandler(severity, message):
+
+def updateTimesforLastReports(signum, frame):
+    """
+        Updates BMC last reports file to current time
+    """
+    filename = '/opt/ibm/ras/etc/updateNodes.ini'
+    if os.path.exists(filename):
+        Updatesconfparser = configparser.ConfigParser()
+        parsedFiles = Updatesconfparser.read(filename)
+        updatedNodes =[]
+        if filename in parsedFiles:
+            try:
+                for section in Updatesconfparser.sections(): 
+                    nodes = dict(Updatesconfparser.items(section))
+                    for node in config.mynodelist:
+                        for markedNode in Updatesconfparser[section]:
+                            if node['xcatNodeName'] == str(markedNode):
+                                bmcHostname = node['bmcHostname']
+                                impactednode = node['xcatNodeName']
+                                updateNotifyTimesData = {'entity': section, 'bmchostname': node['bmcHostname'], 'lastLogTime': nodes[markedNode],
+                                                         'dupTimeIDList': []}
+                                updateConfFile.put(updateNotifyTimesData)
+                                updatedNodes.append(markedNode)
+            
+            except Exception as e:
+                exc_type, exc_obj, exc_tb = sys.exc_info()
+                fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                print("exception: ", exc_type, fname, exc_tb.tb_lineno)
+                print(e)
+            try:
+                os.remove('/opt/ibm/ras/etc/updateNodes.ini')
+                for section in Updatesconfparser.sections():
+                    errorLogger(syslog.LOG_INFO, "Updated {entity} BMC reporting times for: {bmcList}".format(bmcList=", ".join(updatedNodes), entity=section))
+            except Exception as e:
+                errorLogger(syslog.LOG_ERR, 'Unable to delete file /opt/ibm/ras/etc/updateNodes.ini')
+        else:
+            errorLogger(syslog.LOG_ERR, "Unable to parse updateNodes.ini file.")
+        
+
+        
+        
+def errorLogger(severity, message):
     """
          Used to handle creating entries in the system log for this service
            
@@ -108,11 +145,11 @@ def updateEventDictionary(eventsDict):
 def updateBMCLastReports():
     """
          update the bmc ini file to record last log reported
-    """ 
+    """
     global killNow
     confParser = configparser.ConfigParser()
     if os.path.exists('/opt/ibm/ras/etc/bmclastreports.ini'):
-        try: 
+        try:
             confParser.read('/opt/ibm/ras/etc/bmclastreports.ini')
         except Exception as e:
             exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -223,7 +260,7 @@ def BMCEventProcessor():
                             if(missingKey not in missingEvents.keys()):
                                 with lock: 
                                     missingEvents[missingKey] = True
-                                errorHandler(syslog.LOG_ERR, "Event not found in lookup table: " + missingKey)
+                                errorLogger(syslog.LOG_ERR, "Event not found in lookup table: " + missingKey)
                         else:
                             #check for failure to poll the bmc
                             if(eventsDict[event]['CerID'] in networkErrorList):
@@ -390,9 +427,9 @@ def loadBMCLastReports():
                         notifyList[key][node['bmcHostname']]['lastLogTime'] = str(bmcs[node['bmcHostname']]['lastLogTime'])
                         notifyList[key][node['bmcHostname']]['dupTimeIDList'] = bmcs[node['bmcHostname']]['dupTimeIDList']
         except KeyError:
-            errorHandler(syslog.LOG_ERR, "No section: bmcs in ini file. All bmc events will be forwarded to entities being notified. ")
+            errorLogger(syslog.LOG_ERR, "No section: bmcs in ini file. All bmc events will be forwarded to entities being notified. ")
         except configparser.NoSectionError:
-            errorHandler(syslog.LOG_ERR, "No section: "+str(key) +"_bmcs in ini file. All bmc events will be forwarded to entities being notified. ")
+            errorLogger(syslog.LOG_ERR, "No section: "+str(key) +"_bmcs in ini file. All bmc events will be forwarded to entities being notified. ")
 
 def getPlugins():
     """
@@ -479,7 +516,7 @@ def validatePluginNotifications(confParser):
     missingPlugins = []
     for entity in notifyList:
         if isinstance(notifyList[entity]['function'], str) or isinstance(notifyList[entity]['function'], unicode):
-            errorHandler(syslog.LOG_WARNING,"Notify function not found " + notifyList[entity]['function'] +". This entity will not be notified of alerts.")
+            errorLogger(syslog.LOG_WARNING,"Notify function not found " + notifyList[entity]['function'] +". This entity will not be notified of alerts.")
             missingPlugins.append(entity)
     
     #remove entities to notify that don't have the associated plugin
@@ -508,10 +545,10 @@ def setupNotifications():
                         pluginConfSettings = {key: dict(confParser.items(key))}
                         config.pluginConfigs.update(pluginConfSettings)
         else:
-            errorHandler(syslog.LOG_CRIT, "Configuration file not found. Exiting.")
+            errorLogger(syslog.LOG_CRIT, "Configuration file not found. Exiting.")
             sys.exit()
     except KeyError:
-        errorHandler(syslog.LOG_ERR, "No section: notify in file ibm-crassd.conf. Alerts will not be forwarded. Terminating")
+        errorLogger(syslog.LOG_ERR, "No section: notify in file ibm-crassd.conf. Alerts will not be forwarded. Terminating")
         sys.exit() 
     
     #get the nodes to push alerts to
@@ -524,7 +561,7 @@ def setupNotifications():
             if key in i["name"]:
                 if hasattr(plugin, 'initialize'):
                     if not plugin.initialize():
-                        errorHandler(syslog.LOG_CRIT, 'Plugin: ' + i['name'] + ' failed to initialize. Aborting now.')
+                        errorLogger(syslog.LOG_CRIT, 'Plugin: ' + i['name'] + ' failed to initialize. Aborting now.')
                         sys.exit()
         for entity in notifyList:
             if isinstance(notifyList[entity]['function'], basestring):
@@ -563,7 +600,7 @@ def initialize():
 
     #The following list indicates failure to communicate to the BMC and retrieve information
     global networkErrorList
-    networkErrorList = ['FQPSPIN0000M','FQPSPIN0001M', 'FQPSPIN0002M','FQPSPIN0003M','FQPSPCR0020M', 'FQPSPSE0004M']
+    networkErrorList = ['FQPSPIN0000M','FQPSPIN0001M', 'FQPSPIN0002M','FQPSPIN0003M','FQPSPIN0004M','FQPSPCR0020M', 'FQPSPSE0004M']
     
     #Setup Notifications for entities to push alerts to
     confParser = setupNotifications()
@@ -581,7 +618,7 @@ def initialize():
     try:
         maxThreads = int(dict(confParser.items('base_configuration'))['maxthreads'])
     except KeyError:
-        errorHandler(syslog.LOG_ERR, "No section: base configuration in file ibmpowerhwmon.conf. Defaulting to one thread for polling") 
+        errorLogger(syslog.LOG_ERR, "No section: base configuration in file ibm-crassd.conf. Defaulting to one thread for polling") 
     
     
     #Time below in seconds
@@ -660,7 +697,7 @@ if __name__ == '__main__':
             time.sleep(1)
             if(killNow):
                 break
-        errorHandler(syslog.LOG_ERR, "The Power HW Monitoring service has been stopped")
+        errorLogger(syslog.LOG_ERR, "The Power HW Monitoring service has been stopped")
         sys.exit()
     except KeyboardInterrupt:
         print ("Terminating")

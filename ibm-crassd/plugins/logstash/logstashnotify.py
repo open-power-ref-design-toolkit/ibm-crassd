@@ -31,7 +31,7 @@ def connectToSocket(logSocket, host, port, logstashDown):
             continue
     if not connected:
         if not logstashDown:
-            config.errorHandler(syslog.LOG_ERR, "Logstash connection failure: {}".format(erString))
+            config.errorLogger(syslog.LOG_ERR, "Logstash connection failure: {}".format(erString))
     return connected
 
 def writeToSocket(logSocket, alert2Send):
@@ -72,7 +72,7 @@ def initialize():
         host = config.pluginConfigs['logstash']['host']
         port = int(config.pluginConfigs['logstash']['port'])
     except KeyError:
-        config.errorHandler(syslog.LOG_ERR, "Host and port configurations missing for logstash plugin. Defaulting to 127.0.0.1:10522")
+        config.errorLogger(syslog.LOG_ERR, "Host and port configurations missing for logstash plugin. Defaulting to 127.0.0.1:10522")
         host="127.0.0.1"
         port=10522
     
