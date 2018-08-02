@@ -146,11 +146,11 @@ public class ipmiSelParser {
                 BmcEvent cerEvent;
                 if(line.contains("Error: Unable to establish IPMI v2 / RMCP+ session")){
                     System.out.println("\t\"event" + alertCount+ "\":{\n"+
-                            "\t\t\"CerID\": \"FQPSPIN0001M\",\n"+
+                            "\t\t\"CerID\": \"FQPSPIN0004M\",\n"+
                             "\t\t\"sensor\": \"N/A\",\n"+
                             "\t\t\"state\": \"N/A\",\n" +
                             "\t\t\"additonalDetails\": \"Error: Unable to establish IPMI v2 / RMCP+ session\",\n" +
-                            "\t\t\"message\": \"Connection Error. View additional details for more information\",\n" +
+                            "\t\t\"message\": \"Connection Error: Unable to establish IPMI v2 / RMCP+ session\",\n" +
                             "\t\t\"serviceable\": \"Yes\",\n" +
                             "\t\t\"callHome\": \"No\",\n" +
                             "\t\t\"severity\": \"Critical\",\n" +
@@ -201,7 +201,7 @@ public class ipmiSelParser {
                             "\t\t\"sensor\": \"N/A\",\n"+
                             "\t\t\"state\": \"N/A\",\n" +
                             "\t\t\"additonalDetails\": \"N/A\",\n" +
-                            "\t\t\"message\": \"Authentication Error. Ensure your bmc supports ipmi.\",\n" +
+                            "\t\t\"message\": \"Authentication Error. Ensure your BMC supports IPMI.\",\n" +
                             "\t\t\"serviceable\": \"Yes\",\n" +
                             "\t\t\"callHome\": \"No\",\n" +
                             "\t\t\"severity\": \"Critical\",\n" +
