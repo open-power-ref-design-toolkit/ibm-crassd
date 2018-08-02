@@ -641,6 +641,11 @@ if __name__ == '__main__':
     """
          main thread for the application. 
     """   
+    #setup the interrupt to handle SIGTERM, SIGINT
+    signal.signal(signal.SIGTERM, sigHandler)
+    signal.signal(signal.SIGINT, sigHandler)
+    signal.signal(signal.SIGUSR1, sigHandler)
+    signal.signal(signal.SIGUSR2, updateTimesforLastReports)
     try:
 #         nodes2poll = queue.Queue()
 #         updateConfFile = queue.Queue()
