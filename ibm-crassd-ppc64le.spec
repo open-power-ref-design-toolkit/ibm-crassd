@@ -19,6 +19,8 @@ BuildRequires: java-devel >= 1.7.0
 Requires: java >= 1.7.0
 Requires: python 
 Requires: python-requests
+Requires: python-configparser
+Requires: python-websocket-client
 Requires: libstdc++
 
 %if 0%{?_unitdir:1}
@@ -40,26 +42,6 @@ ate including environmental, reliability, service, and failure data.
 %setup -q -n %{name}-%{version}-%{release}
 
 %pre
-installList=""
-python_websocket=$(ls /usr/lib/python2.7/site-packages/ | grep -ie websocket_client)
-python_websocket+=$(ls /root/anaconda2/lib/python2.7/site-packages/ | grep -ie websocket_client)
-python_configparser=$(ls /usr/lib/python2.7/site-packages/ | grep -ie configparser)
-python_configparser+=$(ls /root/anaconda2/lib/python2.7/site-packages/ | grep -ie configparser)
-if [ -z "$python_websocket" ]; then
-	installList+=" websocket-client"	
-fi
-
-if [ -z "$python_configparser" ]; then
-	installList+=" configparser"	
-fi
-if [ -n "$installList" ];then
-	message="The following python packages are are required:$installList"
-	echo $message
-	echo "Install these packages from pypi.python.org using the following command: "
-	echo "easy_install$installList"
-	echo "Once complete, run this installer again. "
-	exit 1
-fi
 
 %build
 %{__make}
