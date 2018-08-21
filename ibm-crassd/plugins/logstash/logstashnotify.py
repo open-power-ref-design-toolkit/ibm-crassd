@@ -2,7 +2,6 @@ import datetime
 import json
 import syslog
 import config
-import threading
 try:
     import Queue as queue
 except ImportError:
