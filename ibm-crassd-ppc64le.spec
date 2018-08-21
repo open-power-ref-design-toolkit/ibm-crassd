@@ -75,10 +75,13 @@ rm -rf $RPM_BUILD_ROOT
 %files
 %defattr(-,root,root,-)
 /opt/ibm/ras/lib/crassd.jar
-/opt/ibm/ras/etc/ibm-crassd.config
-/opt/ibm/ras/bin/ibm-crassd.py
+%config /opt/ibm/ras/etc/ibm-crassd.config
+%attr(755,root,root) /opt/ibm/ras/bin/ibm-crassd.py
 /opt/ibm/ras/bin/config.py
 /opt/ibm/ras/bin/notificationlistener.py
+%attr(755,root,root) /opt/ibm/ras/bin/updateNodeTimes.py
+%attr(755,root,root) /opt/ibm/ras/bin/buildNodeList.py
+%attr(755,root,root) /opt/ibm/ras/bin/analyzeFQPSPPW0034M.py
 /opt/ibm/ras/bin/plugins/
 /opt/ibm/ras/bin/plugins/ibm_csm/
 /opt/ibm/ras/bin/plugins/ibm_csm/__init__.py
