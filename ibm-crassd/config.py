@@ -49,6 +49,7 @@ pluginVars = {}
 global configFileName
 configFileName = '/opt/ibm/ras/etc/ibm-crassd.config'
 updateNodeTimesfile = '/opt/ibm/ras/etc/updateNodes.ini'
+bmclastreports = '/opt/ibm/ras/etc'
 
 def errorLogger(severity, message):
     """
@@ -57,6 +58,5 @@ def errorLogger(severity, message):
          @param severity: the severity of the syslog entry to create
          @param message: string, the message to post in the syslog
     """
-    print("Creating syslog entry")
     syslog.openlog(ident="ibm-crassd", logoption=syslog.LOG_PID|syslog.LOG_NOWAIT)
     syslog.syslog(severity, message)    
