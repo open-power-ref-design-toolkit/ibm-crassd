@@ -62,6 +62,7 @@ def createCommandParser():
     parser.add_argument('-l', '--list', action='store_true', help='lists the valid plugins enabled for ibm-crassd')
     parser.add_argument("-p", "--plugins", nargs='+',help='The list of enabled plugins to update, separated by a space')
     parser.add_argument("-n", "--nodes", nargs='+', help='The list of nodes that need to be updated')
+    parser.add_argument("-e", "--listnodes", action='store_true', help='Lists the valid nodes for ibm-crassd')
     
     return parser
 def getConfiguration():
@@ -175,7 +176,26 @@ def createFileforCrassd(plugins, nodes):
         confWriter[plugin] = sectionItems
         
     return writeCrassdFile(confWriter)
-    
+
+def getValidNodes(confParser):
+    """
+        returns a list of node names
+    """
+    nodelist = []
+    try:
+        nodes = dict(confParser.items('nodes'))
+        for key in nodes:
+            nodelist.append(json.loads(nodes[key])['xcatNodeName'])
+            
+        return nodelist        
+    except Exception as e:
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        print("exception: ", exc_type, fname, exc_tb.tb_lineno)
+        print(e)
+        sys.exit()
+              
+                
 if __name__ == '__main__':
     """
          main function when called from the command line
@@ -191,14 +211,21 @@ if __name__ == '__main__':
     if len(eplugins)>0 and cpid!= -1:
         if args.list:
             print("Enabled Plugins: {pluginList}".format(pluginList = ", ".join(eplugins)))
+        elif args.listnodes:
+            nodeList = getValidNodes(crassdConfig)
+            print("Enabled Nodes: \n{nodes}".format(nodes=", ".join(nodeList)))
         else:
             plugins2Update = getValidPluginsToUpdate(args, eplugins)
             bmcs2update = getValidBMCsToUpdate(args,crassdConfig)
             if len(plugins2Update)>0 and len(bmcs2update) >0:
                 if createFileforCrassd(plugins2Update,bmcs2update):
                     os.kill(cpid, signal.SIGUSR2)
-            ts = int(time.time())
-            print(ts)
+                    print("Waiting for ibm-crassd to update: ")
+                    while(os.path.exists(config.updateNodeTimesfile)):
+                        sys.stdout.write('.')
+                        sys.stdout.flush()
+                        time.sleep(5)
+                    print("\nibm-crassd has updated the node times")
     elif cpid == -1:
         print("ibm-crassd service is not running. Exiting.")
     else:
