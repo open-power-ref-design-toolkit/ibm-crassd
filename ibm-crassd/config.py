@@ -19,6 +19,8 @@ except ImportError:
     import queue
 import threading
 import syslog
+import sys
+import multiprocessing
 
 global nodes2poll
 nodes2poll = queue.Queue()
@@ -35,7 +37,7 @@ lock = threading.Lock()
 global killNow
 killNow = False
 global networkErrorList
-networkErrorList = ['FQPSPIN0000M','FQPSPIN0001M', 'FQPSPIN0002M','FQPSPIN0003M','FQPSPCR0020M', 'FQPSPSE0004M']
+networkErrorList = ['FQPSPIN0000M','FQPSPIN0001M', 'FQPSPIN0002M','FQPSPIN0003M','FQPSPIN0004M','FQPSPCR0020M', 'FQPSPSE0004M']
 
 global pluginPolicies
 pluginPolicies = {}
@@ -46,10 +48,20 @@ pluginConfigs = {}
 global pluginVars
 pluginVars = {}
 
+global telemPort
+telemPort = 53322
+
 global configFileName
 configFileName = '/opt/ibm/ras/etc/ibm-crassd.config'
 updateNodeTimesfile = '/opt/ibm/ras/etc/updateNodes.ini'
 bmclastreports = '/opt/ibm/ras/etc'
+if(sys.version_info<= (3,0)):
+    pyString = 'python'
+else:
+    pyString = 'python3'
+    
+analyzeIDList = []
+analyzeIDcount = {}
 
 def errorLogger(severity, message):
     """

@@ -1,8 +1,8 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 '''
 #================================================================================
 #
-#    ibmpowerhwmon.py
+#    ibm-crassd.py
 #
 #    Copyright IBM Corporation 2015-2017. All Rights Reserved
 #
@@ -20,10 +20,7 @@ import requests
 import syslog
 import time, datetime
 import threading
-try: 
-    import configparser
-except ImportError:
-    import ConfigParser as configparser
+import configparser
 try:
     import Queue as queue
 except ImportError:
@@ -34,7 +31,8 @@ import math
 import config
 from config import *
 import imp
-
+import socket
+import telemetryServer
 
 def sigHandler(signum, frame):
     """
@@ -48,19 +46,18 @@ def sigHandler(signum, frame):
         print("Termination signal received.")
         global killNow
         killNow = True
+        config.killNow = True
     elif(signum == signal.SIGUSR1):
         errorLogger(syslog.LOG_INFO,"Queue size: " + str(nodes2poll.qsize()))
     else:
         print("Signal received" + signum)
-        
-
 
 
 def updateTimesforLastReports(signum, frame):
     """
         Updates BMC last reports file to current time
     """
-    filename = '/opt/ibm/ras/etc/updateNodes.ini'
+    filename = config.updateNodeTimesfile
     if os.path.exists(filename):
         Updatesconfparser = configparser.ConfigParser()
         parsedFiles = Updatesconfparser.read(filename)
@@ -78,18 +75,20 @@ def updateTimesforLastReports(signum, frame):
                                                          'dupTimeIDList': []}
                                 updateConfFile.put(updateNotifyTimesData)
                                 updatedNodes.append(markedNode)
-            
+                                with lock: 
+                                    notifyList[section][bmcHostname]['lastLogTime'] = nodes[markedNode]
+                                    del notifyList[section][bmcHostname]['dupTimeIDList'][:]
             except Exception as e:
                 exc_type, exc_obj, exc_tb = sys.exc_info()
                 fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
                 print("exception: ", exc_type, fname, exc_tb.tb_lineno)
                 print(e)
             try:
-                os.remove('/opt/ibm/ras/etc/updateNodes.ini')
+                os.remove(config.updateNodeTimesfile)
                 for section in Updatesconfparser.sections():
                     errorLogger(syslog.LOG_INFO, "Updated {entity} BMC reporting times for: {bmcList}".format(bmcList=", ".join(updatedNodes), entity=section))
             except Exception as e:
-                errorLogger(syslog.LOG_ERR, 'Unable to delete file /opt/ibm/ras/etc/updateNodes.ini')
+                errorLogger(syslog.LOG_ERR, 'Unable to delete file {filename}'.format(filename=config.updateNodeTimesfile))
         else:
             errorLogger(syslog.LOG_ERR, "Unable to parse updateNodes.ini file.")
         
@@ -103,7 +102,6 @@ def errorLogger(severity, message):
          @param severity: the severity of the syslog entry to create
          @param message: string, the message to post in the syslog
     """
-    print("Creating syslog entry")
     syslog.openlog(ident="ibm-crassd", logoption=syslog.LOG_PID|syslog.LOG_NOWAIT)
     syslog.syslog(severity, message)    
 
@@ -141,6 +139,14 @@ def updateEventDictionary(eventsDict):
                 
     return newEventsDict
 
+def statistics2Write():
+    """
+        Builds the statistics dictionary of data to write
+    """
+    statistics = {}
+    for analyzedID in config.analyzeIDcount:
+        statistics['suppressed_'+ analyzedID] = config.analyzeIDcount[analyzedID]
+    return statistics
 
 def updateBMCLastReports():
     """
@@ -148,35 +154,216 @@ def updateBMCLastReports():
     """
     global killNow
     confParser = configparser.ConfigParser()
-    if os.path.exists('/opt/ibm/ras/etc/bmclastreports.ini'):
+    if os.path.exists(config.bmclastreports):
         try:
-            confParser.read('/opt/ibm/ras/etc/bmclastreports.ini')
+            confParser.read(config.bmclastreports)
         except Exception as e:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
             print ("exception: ", exc_type, fname, exc_tb.tb_lineno)
     while True:
         if killNow: break
-        #node contains {entity: entName, bmchostname: bmchostname, lastlogtime: timestamp, dupTimeIDList: [ID1, ID2]  
-#         if not updateConfFile.empty(): 
+        #node contains {entity: entName, bmchostname: bmchostname, lastlogtime: timestamp, dupTimeIDList: [ID1, ID2]
         node = updateConfFile.get()
-        
 
         if len(node['dupTimeIDList']) >= 1:
             tmpList = []
             for cerid in node['dupTimeIDList']:
                 tmpList.append(str(cerid))
             node['dupTimeIDList'] = tmpList
-        data2write = {'lastLogTime': str(node['lastLogTime']), 'dupTimeIDList': node['dupTimeIDList']}
-        if node['entity']+'_bmcs' not in confParser:
-            confParser[node['entity']+'_bmcs'] = {}
-        confParser[node['entity']+'_bmcs'][node['bmchostname']] = str(data2write)
-        with open('/opt/ibm/ras/etc/bmclastreports.ini', 'w') as configfile:
-            confParser.write(configfile)
-        
+        data2write = {'lastLogTime': str(node['lastLogTime']), 'dupTimeIDList': node['dupTimeIDList'], 'hrTime': datetime.datetime.fromtimestamp(int(node['lastLogTime'])).strftime("%Y-%m-%d %H:%M:%S")}
+        statistics = statistics2Write()
+        if len(statistics)>0:
+            confParser['statistics'] = statistics
+        try:
+            if node['entity']+'_bmcs' not in confParser:
+                confParser[node['entity']+'_bmcs'] = {}
+            confParser[node['entity']+'_bmcs'][node['bmchostname']] = str(data2write)
+            with open(config.bmclastreports, 'w') as configfile:
+                confParser.write(configfile)
+        except Exception as e:
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print("exception: ", exc_type, fname, exc_tb.tb_lineno)
+            traceback.print_tb(e.__traceback__)
+            print(e)
+            continue
+
         updateConfFile.task_done()
+
+
+
+def getBMCAlerts(node):
+    """
+        Gets alerts from the node's BMC and puts them into a dictionary with a common format
         
-   
+        @param node: A dictionary containing properties about a node
+        @return: dictionary with common format containing alerts
+    """        
+    eventList=""
+    eventsDict = {}
+    name = threading.currentThread().getName()
+    bmcHostname = node['bmcHostname']
+    impactednode = node['xcatNodeName']
+    username = node['username']
+    password = node['password']
+    try:
+        #get the alerts from the bmc and place in a common format
+        if(node['accessType']=="openbmcRest"):
+            #use openbmctool for openbmc rest interface
+            try:
+                eventBytes = subprocess.check_output([config.pyString, '/opt/ibm/ras/bin/openbmctool.py', '-H', bmcHostname, '-U', username, '-P', password,'-j','-t','/opt/ibm/ras/lib/policyTable.json', 'sel', 'print'])
+                eventList = eventBytes.decode('utf-8')
+            except subprocess.CalledProcessError as e:
+                if e.returncode == 1:
+                    eventList = e.output.decode('utf-8')
+                else:
+                    errorLogger(syslog.LOG_ERR, "An unknown error has occurred when retrieving bmc alerts from {hostname}. Error Details: {msg}".format(hostname=impactednode, msg=e.message))
+                    eventList = {'numAlerts': 0, 'failedPoll': True}
+            if not isString(eventList):
+                eventList = eventList.decode('utf-8')
+            if eventList.find('{') != -1: #check for valid response
+                eventList = eventList[eventList.index('{'):]
+                eventsDict = json.loads(eventList)
+            else:
+                errorLogger(syslog.LOG_ERR, "An invalid response was received from bmc when requesting alerts for {hostname}".format(hostname=impactednode))
+                eventsDict = {'numAlerts': 0, 'failedPoll': True}
+            eventsDict = updateEventDictionary(eventsDict)
+        elif(node['accessType']=="ipmi"):
+            #use java sel parser and ipmitool to get alerts from ipmi node
+            eventList = subprocess.check_output(['java', '-jar', '/opt/ibm/ras/lib/crassd.jar', bmcHostname, username, password]).decode('utf-8')
+            if eventList.find('{') != -1: #check for valid response
+                eventList = eventList[eventList.index('{'):] #keyboard terminate causing substring not found here
+                eventsDict = json.loads(eventList)
+            else:
+                errorLogger(syslog.LOG_ERR, "An invalid response was received when retrieving bmc alerts from {hostname}. Response Details: {msg}".format(hostname=impactednode, msg=eventList))
+                eventsDict = {'numAlerts': 0, 'failedPoll': True}
+        else:
+            #use redfish
+            errorLogger(syslog.LOG_ERR, "redfish not supported")
+            eventList = {'numAlerts': 0, 'failedPoll': True}
+    except Exception as e:
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        print("exception: ", exc_type, fname, exc_tb.tb_lineno)
+        print(e)
+        traceback.print_tb(e.__traceback__)
+        eventsDict = {'numAlerts': 0, 'failedPoll': True}
+    
+    return eventsDict
+
+def resetFailedNotify(bmcHostname):
+    """
+       Resets the failed to notify counter for this round of polled events for the specified BMC
+       
+       @param bmcHostname: The identifier used for the BMC
+    """
+    for key in notifyList:
+        with lock:
+            notifyList[key][bmcHostname]['pollNotifyFailed'] = 0
+
+def updateTrackingTimes(event, notifyEntity, bmcHostname):    
+    """
+        Updates the tracking for last reported BMC alert
+    """
+    with lock:
+        lastlogtime = notifyEntity[bmcHostname]['lastLogTime']
+    if event['timestamp'] > lastlogtime:
+        with lock: 
+            notifyEntity[bmcHostname]['lastLogTime'] = event['timestamp']
+            del notifyEntity[bmcHostname]['dupTimeIDList'][:]
+            notifyEntity[bmcHostname]['dupTimeIDList'].append(event['CerID'])
+    elif event['timestamp'] == lastlogtime:
+        with lock:
+            notifyEntity[bmcHostname]['dupTimeIDList'].append(event['CerID'])
+        
+def analyzeit(event, username, bmcHostname, password, accessType):
+    """
+        Checks to see if analysis needs run and runs it for the provided event. 
+        Returns True if the event is valid to report upstream, otherwise returns false.
+    """
+    analysisPassed = True
+    pyVersion = config.pyString
+    if(event['CerID'] in config.analyzeIDList and accessType == 'openbmcRest'):
+        script2call = 'analyze{id}.py'.format(id=event['CerID'])
+        if 'FQPSPW0034M' in script2call:
+            pyVersion = 'python'
+        proc = subprocess.Popen([pyVersion, script2call, '-c', '-U', username, '-H', bmcHostname, '-P', password, '-n', event['logNum']], stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
+        result, err = proc.communicate()
+        if 'false' in result.decode('utf-8').lower():
+            analysisPassed = False
+            with lock: 
+                config.analyzeIDcount[event['CerID']] +=1
+    return analysisPassed
+       
+def processAlert(event, bmcHostname, impactednode, username, password, accessType):   
+    """
+        Processes the given alert and notifies the correct entity. If unable to report, increments pollNotifyFailed
+        for the notify entity. 
+       
+       @param event: Dictionary containing all the alert properties
+       @return: True if the notifyTimes need updated, False otherwise
+    """
+    updateTimes = False
+    analysisPassed = None
+    for key in notifyList:
+        updateNotifyTimes = False
+        
+        with lock:
+            receiveEntityStatus = notifyList[key]['receiveEntityDown']
+            dupList = notifyList[key][bmcHostname]['dupTimeIDList']
+            func = notifyList[key]['function']
+            notifyList[key]['failedFirstTry'] = False
+            lastlogtime = notifyList[key][bmcHostname]['lastLogTime']
+            failedThisPoll = notifyList[key][bmcHostname]['pollNotifyFailed']
+        newAlert = (event['timestamp']>lastlogtime or 
+                    (event['timestamp']==lastlogtime and event['CerID'] not in dupList) and
+                    failedThisPoll==0)
+        if(newAlert):
+            #only report new alerts
+            if analysisPassed is None:
+                #run any available analysis scripts
+                analysisPassed = analyzeit(event, username, bmcHostname, password, accessType)
+            if analysisPassed:
+                #process the valid alert
+                repsuccess = func(event, impactednode, notifyList) 
+                with lock:
+                    notifyList[key]['successfullyReported'] = repsuccess
+                if repsuccess:
+                    updateTrackingTimes(event, notifyList[key], bmcHostname)
+                    updateNotifyTimes = True
+                else:
+                    with lock:
+                        notifyList[key]['failedFirstTry'] = True
+                        receiveEntityStatus = notifyList[key]['receiveEntityDown']
+                    if(receiveEntityStatus== False):
+                        with lock:
+                            func = notifyList[key]['function']
+                        repsuccess = func(event, impactednode, notifyList)
+                        
+                        with lock:
+                            notifyList[key]['successfullyReported'] = repsuccess 
+                        if(repsuccess):
+                            updateTrackingTimes(event, notifyList[key], bmcHostname)
+                            updateNotifyTimes = True
+                        else:
+                            with lock:
+                                notifyList[key][bmcHostname]['pollNotifyFailed'] += 1
+                    else:
+                        with lock:
+                            notifyList[key][bmcHostname]['pollNotifyFailed'] += 1
+            else:
+                #analysis found a false alert, filter it
+                updateTrackingTimes(event, notifyList[key], bmcHostname)
+                updateNotifyTimes = True
+                errorLogger(syslog.LOG_INFO, "Filtered alert {id} on {thenode}".format(id=event['CerID'], thenode=impactednode))
+            if updateNotifyTimes:
+                #node contains {entity: entName, bmchostname: bmchostname, lastlogtime: timestamp, dupTimeIDList: [ID1, ID2]     
+                updateNotifyTimesData = {'entity': key, 'bmchostname': bmcHostname, 'lastLogTime': notifyList[key][bmcHostname]['lastLogTime'],
+                                          'dupTimeIDList': notifyList[key][bmcHostname]['dupTimeIDList']}
+                updateConfFile.put(updateNotifyTimesData)
+
+ 
 def BMCEventProcessor():
     """
          processes alerts and is run in child threads
@@ -185,7 +372,6 @@ def BMCEventProcessor():
     global notifyList
     global killNow
     global networkErrorList
-    updateNotifyTimes = False
     while True:
         nodeCommsLost = False
         if killNow: 
@@ -193,66 +379,36 @@ def BMCEventProcessor():
         else:
             node = nodes2poll.get()
             eventList = {}
+            bmcEvent = {}
             name = threading.currentThread().getName()
             bmcHostname = node['bmcHostname']
             impactednode = node['xcatNodeName']
             username = node['username']
             password = node['password']
+            resetFailedNotify(bmcHostname)
             try:
                 print(name +": " + bmcHostname)
-#                 sys.stdout.flush()
-                if(node['accessType']=="openbmcRest"):
-#                     proc = subprocess.Popen(['python', '/opt/ibm/ras/bin/openbmctool.py', '-H', bmcHostname, '-U', 'root', '-P', '0penBmc','-j','-t','/opt/ibm/ras/lib/policyTable.yml', 'sel', 'print'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-#                     eventList = str(proc.communicate()[0])
-                    try:
-                        eventBytes = subprocess.check_output(['python', '/opt/ibm/ras/bin/openbmctool.py', '-H', bmcHostname, '-U', username, '-P', password,'-j','-t','/opt/ibm/ras/lib/policyTable.json', 'sel', 'print'])
-                        eventList = eventBytes.decode('utf-8')
-                    except subprocess.CalledProcessError as e:
-                        if e.returncode == 1:
-                            eventList = e.output
-                        else:
-                            errorHandler(syslog.LOG_ERR, "An unknown error has occurred when retrieving bmc alerts from {hostname}. Error Details: {msg}".format(hostname=impactednode, msg=e.message))
-                            continue
-                    if eventList.find('{') != -1: #check for valid response
-                        eventList = eventList[eventList.index('{'):]
-                    else:
-                        print('unable to get list of events from bmc')
-                        print(eventList)
-#                         sys.stdout.flush()
-                        continue
-                    eventsDict = json.loads(eventList)
-                    eventsDict = updateEventDictionary(eventsDict)
-                elif(node['accessType']=="ipmi"):
-#                     proc= subprocess.Popen(['java', '-jar', '/opt/ibm/ras/lib/crassd.jar', bmcHostname, "ADMIN", 'ADMIN'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-#                     eventList = str(proc.communicate()[0])
-                    eventList = subprocess.check_output(['java', '-jar', '/opt/ibm/ras/lib/crassd.jar', bmcHostname, username, password]).decode('utf-8')
-                    if eventList.find('{') != -1: #check for valid response
-                        eventList = eventList[eventList.index('{'):] #keyboard terminate causing substring not found here
-                    else:
-                        errorHandler(syslog.LOG_ERR, "An invalid response was received when retrieving bmc alerts from {hostname}. Response Details: {msg}".format(hostname=impactednode, msg=eventList))
-#                         sys.stdout.flush()
-                        continue
-                    eventsDict = json.loads(eventList)
-#                     print("processing alerts")
-#                     sys.stdout.flush()
-                else:
-                    #use redfish
-                    print("redfish not supported")
-                    continue
-                
+                #get the alerts from the bmc and place in a common format
+                eventsDict = getBMCAlerts(node)
                 
                 #process the alerts
                 if (eventsDict['numAlerts'] == 0):
                     #node poll was successful and no alerts to process
                     node['pollFailedCount'] = 0
                     continue
+                elif('failedPoll' in eventsDict):
+                    node['pollFailedCount'] += 1
+                    if(node['pollFailedCount'] != 2):
+                        #create a log entry for failing to process sel entries
+                        errorLogger(syslog.LOG_ERR, "Failed to process BMC alerts for {host} three or more times".format(host=impactednode))
+                        continue
                 else:
                     #process the received alerts
                     for i in range(len(eventsDict)-1):
                         if(killNow):
                             break
                         event = "event" +str(i)
-                        
+                        bmcEvent = eventsDict[event]
                         if "error" in eventsDict[event]:
                             node['pollFailedCount'] = 0
                             begIndex = eventsDict[event]['error'].rfind(":") + 2
@@ -260,7 +416,7 @@ def BMCEventProcessor():
                             if(missingKey not in missingEvents.keys()):
                                 with lock: 
                                     missingEvents[missingKey] = True
-                                errorLogger(syslog.LOG_ERR, "Event not found in lookup table: " + missingKey)
+                                errorLogger(syslog.LOG_ERR, "Event not found in lookup table for node {node}: {alert}".format(alert=missingKey, node=impactednode))
                         else:
                             #check for failure to poll the bmc
                             if(eventsDict[event]['CerID'] in networkErrorList):
@@ -270,135 +426,16 @@ def BMCEventProcessor():
                                 if(node['pollFailedCount'] != 2):
                                     #forward the network connection failure at 3 consecutive failures. 
                                     continue
-                                
-                            #only report new events
-                            for key in notifyList:
-#                                 print(bmcHostname +' notifying: ' + str(key))
-                                updateNotifyTimes = False
-                                with lock:
-                                    receiveEntityStatus = notifyList[key]['receiveEntityDown']
-                                    dupList = notifyList[key][bmcHostname]['dupTimeIDList']
-                                    func = notifyList[key]['function']
-                                    notifyList[key]['failedFirstTry'] = False
-                                    lastlogtime = notifyList[key][bmcHostname]['lastLogTime']
-                                if(eventsDict[event]['timestamp']>lastlogtime):
-                                    repsuccess = func(eventsDict[event], impactednode, notifyList) 
-#                                     if funcName in locals():
-#                                         repsuccess = locals()[funcName](eventsDict[event], impactednode, notifyList)
-#                                     elif funcName in globals():
-#                                         repsuccess = globals()[funcName](eventsDict[event], impactednode, notifyList)
-#                                     else:
-#                                         errorHandler(syslog.LOG_ERR, "Unable to find function " +funcName)
-#                                         killNow = True
-#                                         break
-                                    with lock:
-                                        notifyList[key]['successfullyReported'] = repsuccess
-#                                     print('Notify response:' + str(repsuccess))
-                                    if repsuccess:
-                                        with lock: 
-                                            notifyList[key][bmcHostname]['lastLogTime'] = eventsDict[event]['timestamp']
-                                            del notifyList[key][bmcHostname]['dupTimeIDList'][:]
-                                            notifyList[key][bmcHostname]['dupTimeIDList'].append(eventsDict[event]['CerID'])
-                                        updateNotifyTimes = True
-                                    else:
-                                        with lock:
-                                            notifyList[key]['failedFirstTry'] = True
-                                            receiveEntityStatus = notifyList[key]['receiveEntityDown']
-                                        if(receiveEntityStatus== False):
-                                            with lock:
-                                                func = notifyList[key]['function']
-                                            repsuccess = func(eventsDict[event], impactednode, notifyList)
-                                            
-#                                             with lock:
-#                                                 funcName = str(notifyList[key]['function'])
-# #                                             
-#                                             if funcName in locals():
-#                                                 repsuccess = locals()[funcName](eventsDict[event], impactednode, notifyList)
-#                                             elif funcName in globals():
-#                                                 repsuccess = globals()[funcName](eventsDict[event], impactednode, notifyList)
-#                                             else:
-#                                                 errorHandler(syslog.LOG_ERR, "Unable to find function " +funcName)
-#                                                 killNow = True
-#                                                 break
-                                            with lock:
-                                                notifyList[key]['successfullyReported'] = repsuccess 
-                                            if(repsuccess == False):
-#                                                 errorHandler(syslog.LOG_ERR, "Unable to forward HW event to "+str(key)+': ' + str(eventsDict[event]['CerID']) )
-                                                break
-                                            else:
-                                                with lock: 
-                                                    notifyList[key][bmcHostname]['lastLogTime'] = eventsDict[event]['timestamp']
-                                                    del notifyList[key][bmcHostname]['dupTimeIDList'][:]
-                                                    notifyList[key][bmcHostname]['dupTimeIDList'].append(eventsDict[event]['CerID'])
-                                                    updateNotifyTimes = True
-                                        else:
-                                            break
-                                elif(eventsDict[event]['timestamp'] == lastlogtime):
-                                    with lock:
-                                        notifyList[key]['failedFirstTry'] = False
-                                        dupList = notifyList[key][bmcHostname]['dupTimeIDList']
-                                    if(eventsDict[event]['CerID'] not in dupList):
-                                        with lock:
-                                            func = notifyList[key]['function']
-                                        repsuccess = func(eventsDict[event], impactednode, notifyList)
-#                                             funcName = str(notifyList[key]['function'])
-#                                         if funcName in locals():
-#                                             repsuccess= locals()[funcName](eventsDict[event], impactednode, notifyList)
-#                                         elif funcName in globals():
-#                                             repsuccess = globals()[funcName](eventsDict[event], impactednode, notifyList)
-#                                         else:
-#                                             errorHandler(syslog.LOG_ERR, "Unable to find function " +funcName)
-#                                             killNow = True
-#                                             break
-                                        with lock:
-                                            notifyList[key]['successfullyReported'] = repsuccess
-                                        if repsuccess:
-                                            with lock: 
-                                                notifyList[key][bmcHostname]['dupTimeIDList'].append(eventsDict[event]['CerID'])
-                                            updateNotifyTimes = True
-                                        else:
-                                            with lock:
-                                                notifyList[key]['failedFirstTry'] = True
-                                                receiveEntityStatus = notifyList[key]['receiveEntityDown']
-                                            if(receiveEntityStatus == False):
-                                                with lock:
-                                                    func = notifyList[key]['function']
-                                                repsuccess = func(eventsDict[event], impactednode, notifyList)
-#                                                 with lock:
-#                                                     funcName = str(notifyList[key]['function'])
-#                                                 if funcName in locals():
-#                                                     repsuccess = locals()[funcName](eventsDict[event], impactednode, notifyList)
-#                                                 elif funcName in globals():
-#                                                     repsuccess = globals()[funcName](eventsDict[event], impactednode, notifyList)
-#                                                 else:
-#                                                     errorHandler(syslog.LOG_ERR, "Unable to find function " +funcName)
-#                                                     killNow = True
-#                                                     break
-                                                with lock:
-                                                    notifyList[key]['successfullyReported'] = repsuccess
-                                                if(repsuccess == False):
-#                                                     errorHandler(syslog.LOG_ERR, "Unable to forward HW event to "+str(key)+': ' + str(eventsDict[event]['CerID']) )
-                                                    break
-                                                else:
-                                                    with lock: 
-                                                        notifyList[key][bmcHostname]['dupTimeIDList'].append(eventsDict[event]['CerID'])
-                                                    updateNotifyTimes = True
-                                            break
-#                 reported = False 
-                                if updateNotifyTimes:
-                                    updateNotifyTimes = False
-                                    #node contains {entity: entName, bmchostname: bmchostname, lastlogtime: timestamp, dupTimeIDList: [ID1, ID2]     
-                                    updateNotifyTimesData = {'entity': key, 'bmchostname': bmcHostname, 'lastLogTime': notifyList[key][bmcHostname]['lastLogTime'],
-                                                              'dupTimeIDList': notifyList[key][bmcHostname]['dupTimeIDList']}
-                                    updateConfFile.put(updateNotifyTimesData)
-                                 
+
+                            #process the alerts
+                            processAlert(eventsDict[event], bmcHostname, impactednode, username, password, node['accessType'])                                   
                 nodes2poll.task_done()
             except Exception as e:
+                print
                 exc_type, exc_obj, exc_tb = sys.exc_info()
                 fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
                 print("exception: ", exc_type, fname, exc_tb.tb_lineno)
                 print(e)
-#                 sys.stdout.flush()
             eventsDict.clear()
             
             
@@ -408,11 +445,11 @@ def loadBMCLastReports():
            
          @return: modifies global list of monitored nodes with previously reported alerts
     """ 
-    if os.path.exists('/opt/ibm/ras/etc/bmclastreports.ini'):
+    if os.path.exists(config.bmclastreports):
         confParser = configparser.ConfigParser()
         global notifyList
         try: 
-            confParser.read('/opt/ibm/ras/etc/bmclastreports.ini')
+            confParser.read(config.bmclastreports)
         except Exception as e:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
@@ -426,6 +463,10 @@ def loadBMCLastReports():
                         bmcs[node['bmcHostname']]= json.loads(bmcString)
                         notifyList[key][node['bmcHostname']]['lastLogTime'] = str(bmcs[node['bmcHostname']]['lastLogTime'])
                         notifyList[key][node['bmcHostname']]['dupTimeIDList'] = bmcs[node['bmcHostname']]['dupTimeIDList']
+            if 'statistics' in confParser:
+                for key in dict(confParser['statistics']):
+                    id = key.split('suppressed_')[1].upper()
+                    config.analyzeIDcount[id] = int(confParser['statistics'][key])
         except KeyError:
             errorLogger(syslog.LOG_ERR, "No section: bmcs in ini file. All bmc events will be forwarded to entities being notified. ")
         except configparser.NoSectionError:
@@ -476,17 +517,18 @@ def createNodeList(confParser):
     try:
         nodes = dict(confParser.items('nodes'))
         for key in nodes:
-            mynodelist.append(json.loads(nodes[key]))
+            mynodelist.append(json.loads(nodes[key].replace("'",'"')))
             if 'username' not in mynodelist[-1]:
                 if mynodelist[-1]['accessType'] == "ipmi":
                     mynodelist[-1]['username'] = "ADMIN"
                     mynodelist[-1]['password'] = "ADMIN"
                 elif mynodelist[-1]['accessType'] == 'openbmcRest':
-                    needWebsocket = True
                     mynodelist[-1]['username'] = "root"
                     mynodelist[-1]['password'] = "0penBmc"
+            if mynodelist[-1]['accessType'] == 'openbmcRest':
+                needWebsocket = True
             mynodelist[-1]['dupTimeIDList'] = []
-            mynodelist[-1]['lastLogTime'] = 0
+            mynodelist[-1]['lastLogTime'] = '0'
             mynodelist[-1]['pollFailedCount'] = 0
             for entity in notifyList:
                 notifyList[entity][mynodelist[-1]['bmcHostname']] = {
@@ -498,6 +540,7 @@ def createNodeList(confParser):
         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
         print("exception: ", exc_type, fname, exc_tb.tb_lineno)
         print(e)
+        errorLogger(syslog.LOG_CRIT, "Unable to read node list from configuration file")
         sys.exit()
     
     #load optional module for monitoring openbmc systems
@@ -505,6 +548,11 @@ def createNodeList(confParser):
         global notificationlistener
         import notificationlistener
     
+def isString(var):
+    if sys.version_info < (3,0):
+        return isinstance(var, basestring)
+    else:
+        return isinstance(var, str)
     
 def validatePluginNotifications(confParser):
     """
@@ -515,14 +563,40 @@ def validatePluginNotifications(confParser):
     #check for entities to notify that don't have associated plugin
     missingPlugins = []
     for entity in notifyList:
-        if isinstance(notifyList[entity]['function'], str) or isinstance(notifyList[entity]['function'], unicode):
+        if isString(notifyList[entity]['function']):
             errorLogger(syslog.LOG_WARNING,"Notify function not found " + notifyList[entity]['function'] +". This entity will not be notified of alerts.")
             missingPlugins.append(entity)
     
     #remove entities to notify that don't have the associated plugin
     for plugin in missingPlugins:
         del notifyList[plugin]
+
+def getConfigPaths(forceHostname=False):
+    '''
+        Determines the right pathname to use for the config file and
+        for the bmc last reports file. 
+    '''
+    
+    hostname = socket.gethostname().split('.')[0]
+    path = os.sep.join(config.configFileName.split('/')[:-1])
+    dynamicConfigFile = path + os.sep + hostname + '.' + config.configFileName.split('/')[-1]
+    useHostname = False
+    if forceHostname:
+        useHostname = True
+    if os.path.exists(dynamicConfigFile):
+        if hostname not in config.configFileName:
+            config.configFileName = dynamicConfigFile
+            useHostname=True
         
+    confParser = configparser.ConfigParser()
+    confParser.read(config.configFileName)
+    basePath = config.bmclastreports
+    if 'lastReports' in confParser:
+        basePath = confParser['lastReports']['fileLoc']
+    if useHostname:
+        config.bmclastreports = basePath + os.sep + hostname + '.bmclastreports.ini'
+    else:
+        config.bmclastreports = basePath + os.sep + 'bmclastreports.ini'
     
 def setupNotifications():
     """
@@ -531,9 +605,11 @@ def setupNotifications():
     """ 
     #read the config file
     confParser = configparser.ConfigParser()
+    getConfigPaths()
     try:
-        if os.path.exists('/opt/ibm/ras/etc/ibm-crassd.config'):
-            confParser.read('/opt/ibm/ras/etc/ibm-crassd.config')
+        #check for dynamic config file
+        if os.path.exists(config.configFileName):
+            confParser.read(config.configFileName)
             test = dict(confParser.items('notify'))
             for key in test:
                 if test[key] == 'True':
@@ -548,7 +624,7 @@ def setupNotifications():
             errorLogger(syslog.LOG_CRIT, "Configuration file not found. Exiting.")
             sys.exit()
     except KeyError:
-        errorLogger(syslog.LOG_ERR, "No section: notify in file ibm-crassd.conf. Alerts will not be forwarded. Terminating")
+        errorLogger(syslog.LOG_ERR, "No section: notify in file ibm-crassd.config. Alerts will not be forwarded. Terminating")
         sys.exit() 
     
     #get the nodes to push alerts to
@@ -564,7 +640,7 @@ def setupNotifications():
                         errorLogger(syslog.LOG_CRIT, 'Plugin: ' + i['name'] + ' failed to initialize. Aborting now.')
                         sys.exit()
         for entity in notifyList:
-            if isinstance(notifyList[entity]['function'], basestring):
+            if isString(notifyList[entity]['function']):
                 if hasattr(plugin, notifyList[entity]["function"]):
                     notifyList[entity]["function"] = getattr(plugin, notifyList[entity]["function"])
     return confParser
@@ -585,8 +661,144 @@ def queryAllNodes():
         Queries all nodes to get initial status upon starting up. 
     """ 
     for node in mynodelist:
-        #load nodes that are using polling into the queue
+        #loads all nodes into the queue for retrieving the current state of the nodes
         nodes2poll.put(node)
+        
+def getMinimumPollingInterval(numWorkerThreads):
+    """
+        determines the number of passes that have to be made to process all nodes. Passes are only used for 
+        polling a node. Absolute minimum polling interval is 30 seconds.  
+    
+        @return: Integer value representing the number of seconds between polling
+    """
+    #count number of nodes being polled, omit ones using push notifications
+    count = 0
+    for node in mynodelist:
+        if node['accessType'] == 'ipmi':
+            count += 1
+    if count == 0: 
+        count=1       
+    numpasses = math.ceil(float(count)/numWorkerThreads)       
+    #Time below in seconds
+    minPollingInterval = 25*numpasses
+    
+    return minPollingInterval
+
+def setDefaultBMCCredentials(node):
+    if mynodelist[-1]['accessType'] == "ipmi":
+        node ['username'] = "ADMIN"
+        node['password'] = "ADMIN"
+    elif mynodelist[-1]['accessType'] == 'openbmcRest':
+        node['username'] = "root"
+        node['password'] = "0penBmc"
+        
+def updateConfigFileNodes(confParser, nodes2monitor):
+    """
+        Writes changes to the configuration file for the nodes to monitor. 
+        Only used during auto configuration
+    """
+    count = 1
+    nodeDict = {}
+    for node in nodes2monitor:
+        nodeDict['node{num}'.format(num=count)] = {
+            'bmcHostname': nodes2monitor[node]['bmcHostname'],
+            'xcatNodeName': nodes2monitor[node]['xcatNodeName'],
+            'accessType': nodes2monitor[node]['accessType']}
+        count += 1
+    confParser['nodes'] = nodeDict
+    with open(config.configFileName, 'w') as configfile:
+        confParser.write(configfile)
+
+def autoConfigureNodes(confParser):
+    """
+        Attempts to autoConfigure the nodes to monitor
+    """
+    hostname = subprocess.check_output('hostname').decode('utf-8').strip()
+    if ('.' in hostname):
+        hostname = hostname.split('.')[0]
+    nodeOutput= subprocess.check_output([config.pyString, 'buildNodeList.py', '-j']).decode('utf-8')
+    nodes2monitor = {}
+    dynamicConfigFile = config.configFileName
+    if hostname not in config.configFileName:
+        path = os.sep.join(config.configFileName.split('/')[:-1])
+        dynamicConfigFile = path + os.sep + hostname + '.' + config.configFileName.split('/')[-1]
+        config.configFileName= dynamicConfigFile
+
+    needWebsocket = False
+    if 'Error' not in nodeOutput:
+        xcatNodes = json.loads(nodeOutput)
+        if hostname in xcatNodes:
+            nodes2monitor = xcatNodes[hostname]
+        else:
+            errorLogger(syslog.LOG_CRIT, "Unable to auto-configure ibm-crassd. Please ensure nodes are configured in the configuration file at /opt/ibm/ras/etc/ibm-crassd.config")
+            killNow = True
+            sys.exit(1)
+        try:
+            for node in nodes2monitor:
+                mynodelist.append({'xcatNodeName': nodes2monitor[node]['xcatNodeName'], 
+                                   'bmcHostname': nodes2monitor[node]['bmcHostname'],
+                                   'accessType': nodes2monitor[node]['accessType'],
+                                   'pollFailedCount': 0,
+                                   'lastLogTime': '0',
+                                   'dupTimeIDList': []})
+                
+                setDefaultBMCCredentials(mynodelist[-1])
+                if mynodelist[-1]['accessType'] == 'openbmcRest':
+                    needWebsocket = True
+                for entity in notifyList:
+                    notifyList[entity][mynodelist[-1]['bmcHostname']] = {
+                    'lastLogTime': mynodelist[-1]['lastLogTime'],
+                    'dupTimeIDList': mynodelist[-1]['dupTimeIDList']}
+            if len(mynodelist)<1:
+                errorLogger(syslog.LOG_CRIT, "Unable to auto-configure ibm-crassd. Please ensure nodes are configured in the configuration file at /opt/ibm/ras/etc/ibm-crassd.config")
+                killNow = True
+                sys.exit(1)
+        except Exception as e:
+            #Log the exception and terminate
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            errorLogger(syslog.LOG_ERR, "Exception: {type}, {frame}, {line}, {details}".format(
+                type=exc_type, frame=fname, line=exc_tb.tb_lineno, details=e))
+            errorLogger(syslog.LOG_CRIT, "Unable to configure nodes automatically.")
+            sys.exit(1)
+    
+        #load optional module for monitoring openbmc systems
+        if needWebsocket:
+            global notificationlistener
+            import notificationlistener
+        updateConfigFileNodes(confParser, nodes2monitor)
+        getConfigPaths(True)
+    else:
+        errorLogger(syslog.LOG_CRIT, "Unable to auto-configure ibm-crassd. Please ensure nodes are configured in the configuration file at /opt/ibm/ras/etc/ibm-crassd.config")
+        killNow = True
+        sys.exit(1)
+
+def getIDstoAnalyze():
+    directory = os.getcwd() + os.sep
+    filelist = [afile for afile in os.listdir(directory) if os.path.isfile(''.join([directory, afile]))]
+    for f in filelist:
+        if 'analyze' in f:
+            id = f.split('analyze')[1].split('.')[0]
+            if id not in config.analyzeIDList:
+                with lock:
+                    config.analyzeIDList.append(id)
+                    config.analyzeIDcount[id] = 0
+
+def updateMaxThreads(confParser):
+    """
+        Called after an autoconfigure to set the maxThreads variable dynamically to ensure best performance
+    """
+    nodeCount = len(mynodelist)
+    maxThreads = 1
+    if nodeCount > 40:
+        maxThreads = 40
+    else:
+        maxThreads = nodeCount
+    confParser['base_configuration']['maxThreads'] = str(maxThreads)
+    
+    with open(config.configFileName, 'w') as configfile:
+        confParser.write(configfile)
+    
 def initialize():
     """
         Initializes the application by loading the nodes to monitor, getting the plugins needed, and setting up
@@ -600,36 +812,51 @@ def initialize():
 
     #The following list indicates failure to communicate to the BMC and retrieve information
     global networkErrorList
-    networkErrorList = ['FQPSPIN0000M','FQPSPIN0001M', 'FQPSPIN0002M','FQPSPIN0003M','FQPSPIN0004M','FQPSPCR0020M', 'FQPSPSE0004M']
+    networkErrorList = config.networkErrorList
     
     #Setup Notifications for entities to push alerts to
     confParser = setupNotifications()
     
+    #start Telemetry if enabled
+    if 'enableTelemetry' in confParser['base_configuration']:
+        enableTelem = confParser['base_configuration']['enableTelemetry']
+        if confParser['base_configuration']['enableTelemetry'] == 'True':
+            if 'telemetryPort' in confParser['base_configuration']:
+                config.telemPort = int(confParser['base_configuration']['telemetryPort'])
+            telemThread = threading.Thread(target=telemetryServer.main)
+            telemThread.daemon = True  
+            telemThread.start()
+    
     #validate all of the needed plugins loaded
     validatePluginNotifications(confParser)
+    errorLogger(syslog.LOG_INFO, "Node Count: {count}".format(count=len(mynodelist)))
+    #check the node count to see if nodes were specified
+    if len(mynodelist)<1:
+        #The node list seems short, attempt to scan for nodes that report to this service node
+        autoConfigureNodes(confParser)
+        updateMaxThreads(confParser)
+
+    #Check for analysis scripts
+    getIDstoAnalyze()
     #load last reported times from storage file to prevent duplicate entries
     loadBMCLastReports()
-    
-    #run LSF to verify systems to monitor
-    #to be implemented later
+
     
     #Determine the maximum number of nodes
     maxThreads = 1
     try:
-        maxThreads = int(dict(confParser.items('base_configuration'))['maxthreads'])
+        maxThreads = int(confParser['base_configuration']['maxThreads'])
     except KeyError:
-        errorLogger(syslog.LOG_ERR, "No section: base configuration in file ibm-crassd.conf. Defaulting to one thread for polling") 
+        errorLogger(syslog.LOG_ERR, "No section: base configuration in file ibm-crassd.config. Defaulting to one thread for polling") 
+        
     
-    
-    #Time below in seconds
-    minPollingInterval = 30.0
-    numPasses = 1
-    #Create the worker threads
     if(maxThreads >= len(mynodelist)):
         maxThreads = len(mynodelist)
-    else:
-        numPasses = math.ceil(len(mynodelist)/maxThreads)
-    minPollingInterval = 25*numPasses
+
+    if(maxThreads<1): maxThreads=1
+    minPollingInterval = getMinimumPollingInterval(maxThreads)
+    #Create the worker threads
+    
     for i in range(maxThreads):
         print("Creating thread " + str(i))
 
@@ -648,18 +875,17 @@ def initialize():
 
 def pollNodes(interval):
     """
-         Used as timer for the polling interval. set to 20 seconds
+         Used as timer for the polling interval. set to 25 second minimum
            
          @return: Does not return a specific value but loads the global queue with nodes that get polled 
     """ 
-    print ("polling the nodes")
     global killNow
     if not killNow:
         t = threading.Timer(interval, pollNodes, [interval])
         t.daemon = True
         t.start()
     
-    
+    getIDstoAnalyze()
     for node in mynodelist:
         if node['accessType'] == 'ipmi':
             #load nodes that are using polling into the queue
@@ -684,14 +910,7 @@ if __name__ == '__main__':
     signal.signal(signal.SIGUSR1, sigHandler)
     signal.signal(signal.SIGUSR2, updateTimesforLastReports)
     try:
-#         nodes2poll = queue.Queue()
-#         updateConfFile = queue.Queue()
-#         mynodelist = []
-#         missingEvents = {}
-#         lock = threading.Lock()
         initialize()
-#         global killNow
-        
         print(os.getpid())
         while(True):
             time.sleep(1)
