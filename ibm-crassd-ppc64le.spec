@@ -17,11 +17,12 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 BuildRequires: java-devel >= 1.7.0
 
 Requires: java >= 1.7.0
-Requires: python 
-Requires: python-requests
+Requires: python34 
+Requires: python34-requests
 Requires: python-configparser
-Requires: python-websocket-client
+Requires: python34-websocket-client
 Requires: libstdc++
+Requires: pexpect
 
 %if 0%{?_unitdir:1}
 Requires(post): systemd-units
@@ -65,9 +66,6 @@ cp ibm-crassd/ibm-crassd.config $DESTDIR/etc
 cp ibm-crassd.service $RPM_BUILD_ROOT/usr/lib/systemd/system
 cp 85-ibm-crassd.preset $RPM_BUILD_ROOT/usr/lib/systemd/system-preset
 cp errl/ppc64le/errl $DESTDIR/bin/ppc64le
-#cp rastools/gard $DESTDIR/bin/ppc64le
-#cp rastools/putscom $DESTDIR/bin/ppc64le
-#cp rastools/getscom $DESTDIR/bin/ppc64le
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -77,11 +75,13 @@ rm -rf $RPM_BUILD_ROOT
 /opt/ibm/ras/lib/crassd.jar
 %config /opt/ibm/ras/etc/ibm-crassd.config
 %attr(755,root,root) /opt/ibm/ras/bin/ibm-crassd.py
+/opt/ibm/ras/bin/telemetryServer.py
 /opt/ibm/ras/bin/config.py
 /opt/ibm/ras/bin/notificationlistener.py
 %attr(755,root,root) /opt/ibm/ras/bin/updateNodeTimes.py
 %attr(755,root,root) /opt/ibm/ras/bin/buildNodeList.py
 %attr(755,root,root) /opt/ibm/ras/bin/analyzeFQPSPPW0034M.py
+%attr(755,root,root) /opt/ibm/ras/bin/analyzeFQPSPAA0001M.py
 /opt/ibm/ras/bin/plugins/
 /opt/ibm/ras/bin/plugins/ibm_csm/
 /opt/ibm/ras/bin/plugins/ibm_csm/__init__.py
@@ -97,13 +97,8 @@ rm -rf $RPM_BUILD_ROOT
 /opt/ibm/ras/bin/ppc64le/errl
 /usr/lib/systemd/system/ibm-crassd.service
 /usr/lib/systemd/system-preset/85-ibm-crassd.preset
-#/opt/ibm/ras/bin/ppc64le/getscom
-#/opt/ibm/ras/bin/ppc64le/putscom
-#/opt/ibm/ras/bin/ppc64le/gard
 
 
 %post
-#%systemd_post ibmpowerhwmon.service
-#ln -s -f /opt/ibm/ras/bin/openbmctool.py /usr/bin/openbmctool
-#ls -s -f /opt/ibm/ras/bin/ppc64le/plc/plc.pl /usr/bin/plc.pl
+
 %changelog
