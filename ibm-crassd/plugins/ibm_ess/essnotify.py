@@ -3,7 +3,7 @@ import config
 import os
 import subprocess
 
-def errorHandler(severity, message):
+def errorLogger(severity, message):
     """
          Used to handle creating entries in the system log for this service
            
@@ -36,13 +36,13 @@ def notifymmhealth(cerEvent, impactedNode, entityAttr):
             if "Event "+ cerEvent['CerID'] + " raised" in result:
                 return True
             else: 
-                errorHandler(syslog.LOG_ERR, "Failed to raise event to mmhealth:" + str(cerEvent['CerID']) + ": "+ str(cerEvent['message']))
+                errorLogger(syslog.LOG_ERR, "Failed to raise event to mmhealth:" + str(cerEvent['CerID']) + ": "+ str(cerEvent['message']))
                 return False
         else:
             return True
     else:
         if not mmHealthDown:
-            errorHandler(syslog.LOG_CRIT, "Unable to find mmsysmonc. Ensure the utility is installed properly and part of the PATH")
+            errorLogger(syslog.LOG_CRIT, "Unable to find mmsysmonc. Ensure the utility is installed properly and part of the PATH")
             with config.lock:
                 entityAttr['ess']['receiveEntityDown'] = True
     

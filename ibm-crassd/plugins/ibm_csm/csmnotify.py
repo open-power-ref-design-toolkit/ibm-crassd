@@ -7,7 +7,7 @@ import config
 import os
 import traceback
 
-def errorHandler(severity, message):
+def errorLogger(severity, message):
     """
          Used to handle creating entries in the system log for this service
            
@@ -31,7 +31,7 @@ def createArgString(cerEvent):
     try:
         cerMessage = config.pluginPolicies['csmPolicy'][cerEvent['CerID']]['Message']
     except KeyError:
-        config.errorHandler(syslog.LOG_ERR, "Event ID {cerID} missing in CSM Policy Table.".format(cerID=cerEvent['CerID']))
+        config.errorLogger(syslog.LOG_ERR, "Event ID {cerID} missing in CSM Policy Table.".format(cerID=cerEvent['CerID']))
         cerMessage = cerEvent['message']
     argInstance = 0
     while cerMessage.find('$(', index) != -1:
@@ -40,9 +40,9 @@ def createArgString(cerEvent):
         if argString != "":
             argString = argString +','
         try:
-            argString = argString + arg +'=' + cerEvent['compInstance'].split(',')[argInstance]
+            argString = argString + arg +'=' + str(cerEvent['compInstance']).split(',')[argInstance]
         except IndexError:
-            config.errorHandler(syslog.LOG_ERR, "CSM Policy table has more arguments than provided by the alert.")
+            config.errorLogger(syslog.LOG_ERR, "CSM Policy table has more arguments than provided by the alert.")
             argString = ""
             break
         argInstance += 1
@@ -60,15 +60,19 @@ def notifyCSM(cerEvent, impactedNode, entityAttr):
         host=config.pluginConfigs['csm']['host']
         port=config.pluginConfigs['csm']['port']
     except KeyError:
-        errorHandler(syslog.LOG_ERR, "Host and port configurations missing for CSM plugin. Defaulting to 127.0.0.1:4213")
+        errorLogger(syslog.LOG_ERR, "Host and port configurations missing for CSM plugin. Defaulting to 127.0.0.1:4213")
         host="127.0.0.1"
         port="4213"
     httpHeader = {'Content-Type':'application/json'}
     with config.lock:
         failedFirstFlag = entityAttr['csm']['failedFirstTry']
         csmDown = entityAttr['csm']['receiveEntityDown']
-    if(config.pluginPolicies['csmPolicy'][cerEvent['CerID']]['CSMEnabled']== False):
-        return True
+    try:
+        if(config.pluginPolicies['csmPolicy'][cerEvent['CerID']]['CSMEnabled']== False):
+            return True
+    except KeyError:
+        #Report the alert is missing and forward the event to CSM by default. 
+        config.errorLogger(syslog.LOG_ERR, "Event ID {cerID} missing in CSM Policy Table. Forwarding to CSM".format(cerID=cerEvent['CerID']))
     if(failedFirstFlag == False):
         msgID = "bmc." + "".join(cerEvent['eventType'].split()) + "." + cerEvent['CerID']
         argString = createArgString(cerEvent)
@@ -93,7 +97,7 @@ def notifyCSM(cerEvent, impactedNode, entityAttr):
                 entityAttr['csm']['receiveEntityDown'] = False
             return False
         else:
-            print("Successfully reported to CSM: " + msgID)
+            errorLogger(syslog.LOG_INFO,"Successfully reported to CSM: {id} for {system}".format(id= msgID, system=impactedNode))
 #             sys.stdout.flush()
             if csmDown == True:
                 with config.lock:
@@ -101,13 +105,13 @@ def notifyCSM(cerEvent, impactedNode, entityAttr):
             return True
     except(requests.exceptions.Timeout):
         if csmDown == False:
-            errorHandler(syslog.LOG_ERR, "Connection Timed out connecting to csmrestd system service. Ensure the service is running")
+            errorLogger(syslog.LOG_ERR, "Connection Timed out connecting to csmrestd system service. Ensure the service is running")
             with config.lock:
                 entityAttr['csm']['receiveEntityDown'] = True;
         return False
     except(requests.exceptions.ConnectionError) as err:
         if csmDown == False:
-            errorHandler(syslog.LOG_ERR, "Encountered an error connecting to csmrestd system service. Ensure the service is running. Error: " + str(err))
+            errorLogger(syslog.LOG_ERR, "Encountered an error connecting to csmrestd system service. Ensure the service is running. Error: " + str(err))
             with config.lock:
                 entityAttr['csm']['receiveEntityDown'] = True;
         return False   
@@ -115,10 +119,10 @@ def notifyCSM(cerEvent, impactedNode, entityAttr):
         traceback.print_stack()
     
      
-def loadPolicyTable(pathToPolicyTable):
+def loadPolicyTable(fileLoc):
     policyTable = {}
-    if(os.path.exists(pathToPolicyTable)):
-        with open(pathToPolicyTable, 'r') as stream:
+    if(os.path.exists(fileLoc)):
+        with open(fileLoc, 'r') as stream:
             try:
                 contents =json.load(stream)
                 policyTable = contents['events']
