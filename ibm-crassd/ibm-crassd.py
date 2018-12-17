@@ -1,20 +1,19 @@
-#!/usr/bin/python3
-'''
-#================================================================================
-#
-#    ibm-crassd.py
-#
-#    Copyright IBM Corporation 2015-2017. All Rights Reserved
-#
-#    This program is licensed under the terms of the Eclipse Public License
-#    v1.0 as published by the Eclipse Foundation and available at
-#    http://www.eclipse.org/legal/epl-v10.html
-#
-#    U.S. Government Users Restricted Rights:  Use, duplication or disclosure
-#    restricted by GSA ADP Schedule Contract with IBM Corp.
-#
-#================================================================================
-'''
+#!/usr/bin/python3 -u
+"""
+ Copyright 2017 IBM Corporation
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+"""
 import signal, os, sys
 import requests
 import syslog
