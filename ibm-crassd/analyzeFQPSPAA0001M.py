@@ -32,7 +32,7 @@ def createCommandParser():
     parser = argparse.ArgumentParser(description=programDescription, formatter_class=argparse.RawDescriptionHelpFormatter)
     actionType = parser.add_mutually_exclusive_group(required=True)
     actionType.add_argument("-a", "--auto", action='store_true', help='Automatically take action on the alert as needed')
-    actionType.add_argument('-t', '--test', action='store_true', help='Test for a problem and report whether the power supply is healthy or not')
+    actionType.add_argument('-t', '--test', action='store_true', help='Test for a problem and report whether the INTCQ[52:54] false error is present')
     actionType.add_argument("-c", "--crassd", action='store_true', help='Used to indicate the function was called by ibm-crassd. Not intended for end-users')
     amount = parser.add_mutually_exclusive_group(required=True)
     amount.add_argument('-n', '--logNumber', help='The log number of the entry to test')
