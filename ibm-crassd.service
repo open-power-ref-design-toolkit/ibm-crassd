@@ -19,7 +19,7 @@ After=multi-user.target syslog.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python3 -u /opt/ibm/ras/bin/ibm-crassd.py
+ExecStart=/opt/ibm/ras/bin/ibm-crassd.py
 WorkingDirectory=/opt/ibm/ras/bin
 Restart=always
 RestartSec=5
