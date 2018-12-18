@@ -287,7 +287,10 @@ def analyzeit(event, username, bmcHostname, password, accessType):
         script2call = 'analyze{id}.py'.format(id=event['CerID'])
         if 'FQPSPW0034M' in script2call:
             pyVersion = 'python'
-        proc = subprocess.Popen([pyVersion, script2call, '-c', '-U', username, '-H', bmcHostname, '-P', password, '-n', event['logNum']], stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
+        command = [pyVersion, script2call, '-c', '-U', username, '-H', bmcHostname, '-P', password, '-n', event['logNum']]
+        if 'clear' in config.analysisOptions[event['CerID']]:
+            command.append('-a')
+        proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
         result, err = proc.communicate()
         if 'false' in result.decode('utf-8').lower():
             analysisPassed = False
@@ -772,9 +775,32 @@ def autoConfigureNodes(confParser):
         killNow = True
         sys.exit(1)
 
-def getIDstoAnalyze():
+def getIDstoAnalyze(confParser):
     directory = os.getcwd() + os.sep
     filelist = [afile for afile in os.listdir(directory) if os.path.isfile(''.join([directory, afile]))]
+    try:
+        if 'analysis' in confParser:
+            for id in confParser['analysis']:
+                upperID = id.upper()
+                if 'clear' in confParser['analysis'][id]:
+                    config.analysisOptions[upperID] = 'clear'
+                elif 'filter' in confParser['analysis'][id]:
+                    config.analysisOptions[upperID] = 'filter'
+                if id not in config.analyzeIDList:
+                    with lock:
+                        config.analyzeIDList.append(upperID)
+                        config.analyzeIDcount[upperID] = 0
+            for id in config.analyzeIDList:
+                tempfilename = 'analyze{id}.py'.format(id=upperID)
+                if tempfilename not in filelist:
+                    errorLogger(syslog.LOG_CRIT, "Unable to find analysis script {scriptName}. Continuing to run without it.".format(scriptName=tempfilename))
+                    with lock:
+                        config.analyzeIDList.remove(upperID)
+                        config.analyzeIDcount.pop(upperID, None)
+            return
+    except Exception as e:
+        errorLogger(syslog.LOG_CRIT, "Unable to read the analysis section of the ibm-crassd configuration file. Attempting to run with the installed analysis scripts in filter mode.")
+
     for f in filelist:
         if 'analyze' in f:
             id = f.split('analyze')[1].split('.')[0]
@@ -782,6 +808,7 @@ def getIDstoAnalyze():
                 with lock:
                     config.analyzeIDList.append(id)
                     config.analyzeIDcount[id] = 0
+                    config.analysisOptions[id] = 'filter'
 
 def updateMaxThreads(confParser):
     """
@@ -816,15 +843,7 @@ def initialize():
     #Setup Notifications for entities to push alerts to
     confParser = setupNotifications()
     
-    #start Telemetry if enabled
-    if 'enableTelemetry' in confParser['base_configuration']:
-        enableTelem = confParser['base_configuration']['enableTelemetry']
-        if confParser['base_configuration']['enableTelemetry'] == 'True':
-            if 'telemetryPort' in confParser['base_configuration']:
-                config.telemPort = int(confParser['base_configuration']['telemetryPort'])
-            telemThread = threading.Thread(target=telemetryServer.main)
-            telemThread.daemon = True  
-            telemThread.start()
+
     
     #validate all of the needed plugins loaded
     validatePluginNotifications(confParser)
@@ -836,7 +855,7 @@ def initialize():
         updateMaxThreads(confParser)
 
     #Check for analysis scripts
-    getIDstoAnalyze()
+    getIDstoAnalyze(confParser)
     #load last reported times from storage file to prevent duplicate entries
     loadBMCLastReports()
 
@@ -868,6 +887,17 @@ def initialize():
     t.start()
     
     configurePushNotifications()
+    
+    #start TelemetryServer if enabled
+    if 'enableTelemetry' in confParser['base_configuration']:
+        enableTelem = confParser['base_configuration']['enableTelemetry']
+        if confParser['base_configuration']['enableTelemetry'] == 'True':
+            if 'telemetryPort' in confParser['base_configuration']:
+                config.telemPort = int(confParser['base_configuration']['telemetryPort'])
+            telemThread = threading.Thread(target=telemetryServer.main)
+            telemThread.daemon = True  
+            telemThread.start()
+    
     queryAllNodes()
     #Setup polling interval
     pollNodes(minPollingInterval) 
@@ -884,7 +914,6 @@ def pollNodes(interval):
         t.daemon = True
         t.start()
     
-    getIDstoAnalyze()
     for node in mynodelist:
         if node['accessType'] == 'ipmi':
             #load nodes that are using polling into the queue

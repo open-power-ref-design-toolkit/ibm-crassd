@@ -61,6 +61,7 @@ else:
     
 analyzeIDList = []
 analyzeIDcount = {}
+analysisOptions = {}
 
 def errorLogger(severity, message):
     """
