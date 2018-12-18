@@ -135,6 +135,7 @@ def login(host, username, pw,jsonFormat):
     httpHeader = {'Content-Type':'application/json'}
     mysess = requests.session()
     try:
+        #seeing a hang here
         r = mysess.post('https://'+host+'/login', headers=httpHeader, json = {"data": [username, pw]}, verify=False, timeout=30)
         loginMessage = json.loads(r.text)
         if (loginMessage['status'] != "ok"):
@@ -430,40 +431,145 @@ def init():
         
     
            
+def recvall(sock, n):
+    #helperfunction to receive n bytes or return None if EOF is hit
+    data = b''
+    while len(data) < n:
+        packet = sock.recv(n - len(data))
+        if not packet:
+            return None
+        data += packet
+    return data
+     
+def process_data(filterData, addr):
+    """
+        Processes the filter data received from a client. In the case of errors, defaults are used. 
+        For invalid names and types, they are removed from the list. The full path of the sensor name must be included.
+        
+        @param filterData: The raw data received from the client. Must be in a JSON formatted string.
+        @param addr: The address of the client as a string.
+    """    
+    try:
+        filterDict = json.loads(filterData.decode())
+        if 'frequency' in filterDict:
+            if not isinstance(filterDict['frequency'], int):
+                try:
+                    filterDict['frequency'] = int(filterDict['frequency'])
+                except Exception as e:
+                    config.errorLogger(syslog.LOG_ERR, "{value} is not a valid frequency".format(value=filterDict['frequency']))
+                    filterDict['frequency'] = 1
+        if 'sensornames' in filterDict:
+            if not isinstance(filterDict['sensornames'], list):
+                config.errorLogger(syslog.LOG_ERR, "{value} is not a valid list of names".format(value=filterDict['sensornames']))
+                filterDict.pop('sensornames', None)
+            else:
+                fullpathnames = []
+                for sname in filterDict['sensornames']:
+                    found = False
+                    for fullSensName in sensorList:
+                        if sname in fullSensName:
+                            found = True
+                            fullpathnames.append(fullSensName)
+                            break
+                    if not found:
+                        config.errorLogger(syslog.LOG_ERR, "{value} is not a valid sensor name".format(value=sname))
+                filterDict['sensornames'] = fullpathnames
+                if len(filterDict['sensornames'])<= 0:
+                    filterDict.pop('sensornames', None)
+        if 'sensortypes' in filterDict:
+            if not isinstance(filterDict['sensortypes'], list):
+                config.errorLogger(syslog.LOG_ERR, "{value} is not a valid list of types".format(value=filterDict['sensortypes']))
+                filterDict.pop('sensornames', None)
+            else:
+                validSensorTypes = ['current', 'power', 'voltage', 'temperature', 'fan_tach']
+                for stype in filterDict['sensortypes']:
+                    if stype not in validSensorTypes:
+                        config.errorLogger(syslog.LOG_ERR, "{value} is not a valid sensor type".format(value=stype))
+                        filterDict['sensortypes'].remove(stype)
+                if len(filterDict['sensortypes'])<= 0:
+                    filterDict.pop('sensortypes', None)
+        return filterDict
+    except Exception as e:
+        config.errorLogger(syslog.LOG_CRIT, "Unable to process message from client {addr}. Error details: {err}".format(addr=addr, err=e))
 
+def getFilteredData(filterInfo, sensorData):
+    """
+        Returns a dictionary containing the filtered sensors. 
+        @param filterInfo: Dictionary containing the filters
+        @return: Dictionary containing only the subscribed to sensors
+    """
+#     global sensorData
+    filteredDict = {}
+    #sensor names have the highest priority for filters
+    if "sensornames" in filterInfo:
+        for node in sensorData:
+            filteredDict[node] = {}
+            for sname in filterInfo['sensornames']:
+                filteredDict[node][sname.split('/')[-1]] = sensorData[node][sname.split('/')[-1]]
+        return filteredDict
+    elif 'sensortypes' in filterInfo:
+        for node in sensorData:
+            filteredDict[node] = {}
+            for sname in sensorData[node]:
+                if sensorData[node][sname]['type'][0] in filterInfo['sensortypes']:
+                    filteredDict[node][sname] = sensorData[node][sname]
+        return filteredDict
+    else:
+        return sensorData
+    
+    
 def on_new_client(clientsocket, addr):
+    """
+         Run in a thread, sends telemetry data to a subscribed client
+           
+         @param clientsocket: the socket opened with the subscriber
+         @param addr: The address of the subscriber
+    """ 
     last_run = next_run = now = get_millis()
+    clientSubRate = update_every
     clientsocket.settimeout(0.1)
     count = 0
-    config.errorLogger(syslog.LOG_INFO, "Telemetry connected to {address}".format(address= addr))
+    config.errorLogger(syslog.LOG_INFO, "Telemetry streaming connected to {address}".format(address= addr))
     global killNow
+    filterInfo = {}
     while True:
         if killNow:
             break
-        try:
-            data = clientsocket.recv(4096)
-            if not data:
-                break
-        except socket.timeout:
-            pass
-        except Exception as e:
-            print(e)
-            sys.exit(1)
 
         if next_run <= now:
             count += 1
             while next_run <=now:
-                next_run += update_every
+                next_run += clientSubRate
             dt = now - last_run
             last_run = now
             
             if count == 1:
                 dt = 0
-            data2send = (json.dumps(sensorData, indent=0, separators=(',', ':')).replace('\n','') +"\n").encode()
+            filteredSensors = getFilteredData(filterInfo, sensorData)
+            data2send = (json.dumps(filteredSensors, indent=0, separators=(',', ':')).replace('\n','') +"\n").encode()
+#             data2send = (json.dumps(sensorData, indent=0, separators=(',', ':')).replace('\n','') +"\n").encode()
             msg = struct.pack('>I', len(data2send)) + data2send
             clientsocket.sendall(msg) 
-        time.sleep(update_every/1000/3)
+        time.sleep(0.3) #wait 1/3 of a second and check for new
         now = get_millis()   
+        
+        try:
+            raw_msglen = recvall(clientsocket, 4)
+            if not raw_msglen:
+                break
+            msglen = struct.unpack('>I', raw_msglen)[0]
+            data = recvall(clientsocket, msglen)
+            if not data:
+                break
+            else:
+                filterInfo = process_data(data, addr)
+                if 'frequency' in filterInfo:
+                    clientSubRate = filterInfo['frequency'] * 1000
+        except socket.timeout:
+            pass
+        except Exception as e:
+            print(e)
+
         
     for item in clientList:
         if addr == item:
