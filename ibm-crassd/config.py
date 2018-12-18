@@ -20,7 +20,6 @@ except ImportError:
 import threading
 import syslog
 import sys
-import multiprocessing
 
 global nodes2poll
 nodes2poll = queue.Queue()
