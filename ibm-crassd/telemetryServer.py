@@ -21,7 +21,6 @@ import ssl
 import json
 import requests
 import threading
-from config import mynodelist, killNow
 import multiprocessing
 try:
     import queue
@@ -237,25 +236,28 @@ def getNode():
             
 def on_message(ws, message):
     thisNode = getNode()
+    thisNode['activeTimer'] = time.time()
+    thisNode['down'] = False
 #     print("New Message")
     messageQueue.put({'node': thisNode,'msg':message})
 
 def on_error(ws, error):
     thisNode = getNode()
-    thisNode['telemlistener'] = None
-    #print(error)
+    if thisNode['websocket'] == ws:
+        thisNode['telemlistener'] = None
+    
 
 def on_close(ws):
     thisNode = getNode()
-    thisNode['telemlistener'] = None
-    #print("### closed ###")
+    if thisNode['websocket'] == ws:
+        thisNode['telemlistener'] = None
 
 def on_open(ws):
     #open the websocket and subscribe to the sensors
     data = {"paths": sensorList, "interfaces": ["xyz.openbmc_project.Sensor.Value"]}
     ws.send(json.dumps(data))
 
-def createWebsocket(sescookie, bmcIP):
+def createWebsocket(sescookie, bmcIP, node):
     cookieStr = ""
     for key in sescookie:
         if cookieStr != "":
@@ -266,6 +268,7 @@ def createWebsocket(sescookie, bmcIP):
                               on_error = on_error,
                               on_close = on_close,
                               cookie = cookieStr)
+    node['websocket'] = ws
     ws.on_open = on_open
     wsClosed = False
     ws.run_forever(sslopt={"cert_reqs": ssl.CERT_NONE})
@@ -326,16 +329,23 @@ def openWebSocketsThreads(node):
     bmcIP = node['bmcHostname']
     systemName = node['xcatNodeName']
     mysession = login(bmcIP,"root", "0penBmc", True)
+    node['activeTimer'] = time.time()
+    node['retryCount'] = 0
     sescookie= mysession.cookies.get_dict()
     initSensors(bmcIP, 'root', '0penBmc', mysession, systemName)
-    createWebsocket(sescookie, bmcIP)
+    createWebsocket(sescookie, bmcIP, node)
 
 def startMonitoringProcess(nodeList):
     killQueueThread = threading.Thread(target=killQueueChecker)
     killQueueThread.daemon = True
     killQueueThread.start()
+    global activeThreads
+    global lock
     for node in nodeList:
         if node['accessType'] == 'openbmcRest':
+            node['activeTimer'] = time.time()
+            node['retryCount'] = 0
+            node['down'] = False
             ws = threading.Thread(target = openWebSocketsThreads, args=[node])
             ws.daemon = True
             ws.start() 
@@ -345,16 +355,50 @@ def startMonitoringProcess(nodeList):
     pm.start()
     activeThreads.append(ws)
     activeThreads.append(pm)
-    
+    time.sleep(60)
+    global lock
     global killNow
     while True:
         if killNow:
             break
+        for node in nodeList:
+            msgtimer = time.time() - node['activeTimer']
+            if node['accessType'] == 'openbmcRest':
+                if node['telemlistener'] is None:
+                    try:
+                        ws = threading.Thread(target = openWebSocketsThreads, args=[node])
+                        ws.daemon = True
+                        ws.start() 
+                        node['telemlistener'] = ws
+                    except Exception as e:
+                        pass
+                elif msgtimer > 60:
+                    try:
+                        if node['retryCount'] <=3:
+                            oldws = node['websocket']
+                            oldws.close()
+                            ws = threading.Thread(target = openWebSocketsThreads, args=[node])
+                            ws.daemon = True
+                            ws.start() 
+                            node['telemlistener'] = ws
+                            node['retryCount'] +=1
+                        if node['retryCount'] >3 and msgtimer>=300:
+                            if not node['down']:
+                                config.errorLogger(syslog.LOG_CRIT, "ibm-crassd has failed to reconnect to BMC, {bmc}, more than three times.".format(bmc=node['bmcHostname']))
+                                node['down'] = True
+                            node['retryCount'] = 0
+                    except Exception as e:
+                        if not node['down']:
+                            config.errorLogger(syslog.LOG_CRIT, "The BMC, {bmc}, stopped sending telemetry data and ibm-crassd failed to reconnect to it.".format(bmc=node['bmcHostname']))
+                            node['down'] = True
+                else:
+                    pass
         time.sleep(0.9)
         telemUpdateQueue.put(sensorData)
 
 def telemReceive():
     global killNow
+    global sensorData
     while True:
         if killNow:
             break
@@ -367,7 +411,7 @@ def telemReceive():
 def init():
     websocket.enableTrace(False)
     global gathererProcs
-    if len(mynodelist)%50 > 0:
+    if len(config.mynodelist)%50 > 0:
         oddNum = 1
     else:
         oddNum = 0
@@ -428,6 +472,7 @@ def on_new_client(clientsocket, addr):
 
     
 def socket_server(servsocket):
+    global serverhostname
     dataUpdaterThread = threading.Thread(target=telemReceive)
     dataUpdaterThread.daemon = True
     dataUpdaterThread.start()
@@ -437,7 +482,7 @@ def socket_server(servsocket):
     killQueueThread.start()
     
     servsocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    servsocket.bind((serverhostname,port))
+    servsocket.bind((serverhostname,config.telemPort))
     servsocket.listen(15)
     read_list = [servsocket]
     global killNow
