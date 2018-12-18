@@ -32,6 +32,7 @@ from config import *
 import imp
 import socket
 import telemetryServer
+import traceback
 
 def sigHandler(signum, frame):
     """
