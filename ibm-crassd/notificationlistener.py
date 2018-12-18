@@ -89,6 +89,7 @@ def openSocket(hostname, username, password):
     """
     global bmcHostname
     bmcHostname = hostname
+    node = getNode()
     websocket.enableTrace(False)
     failedConCount = 0
     for i in range(3):
@@ -100,6 +101,7 @@ def openSocket(hostname, username, password):
     if failedConCount >=3:
         reportNodeDown(mysession)
     else:
+        node['session'] = mysession
         cookie= mysession.cookies.get_dict()
         cookieStr = ""
         for key in cookie:
