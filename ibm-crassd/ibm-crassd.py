@@ -945,7 +945,7 @@ if __name__ == '__main__':
             time.sleep(1)
             if(killNow):
                 break
-        errorLogger(syslog.LOG_ERR, "The Power HW Monitoring service has been stopped")
+        errorLogger(syslog.LOG_ERR, "The ibm-crassd service has been stopped")
         sys.exit()
     except KeyboardInterrupt:
         print ("Terminating")
