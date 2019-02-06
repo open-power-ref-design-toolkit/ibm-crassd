@@ -945,6 +945,7 @@ if __name__ == '__main__':
     """
          main thread for the application. 
     """   
+    set_procname('ibm-crassd'.encode('utf-8'))
     #setup the interrupt to handle SIGTERM, SIGINT
     signal.signal(signal.SIGTERM, sigHandler)
     signal.signal(signal.SIGINT, sigHandler)
