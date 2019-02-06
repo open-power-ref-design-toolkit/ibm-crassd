@@ -863,6 +863,10 @@ def initialize():
     
     #Determine the maximum number of nodes
     maxThreads = 1
+    
+    #Enable debug messages if needed
+    if 'enableDebugMsgs' in confParser['base_configuration']:
+        config.enableDebug = confParser['base_configuration']['enableDebugMsgs']
     try:
         maxThreads = int(confParser['base_configuration']['maxThreads'])
     except KeyError:
@@ -887,7 +891,7 @@ def initialize():
     t.daemon = True
     t.start()
     
-    configurePushNotifications()
+
     
     #start TelemetryServer if enabled
     if 'enableTelemetry' in confParser['base_configuration']:
@@ -895,11 +899,17 @@ def initialize():
         if confParser['base_configuration']['enableTelemetry'] == 'True':
             if 'telemetryPort' in confParser['base_configuration']:
                 config.telemPort = int(confParser['base_configuration']['telemetryPort'])
+                config.useTelem = True
             telemThread = threading.Thread(target=telemetryServer.main)
             telemThread.daemon = True  
             telemThread.start()
+        else:
+            #subscribe to events only if no telemetry
+            configurePushNotifications()
+    else:
+        #subscribe to events only if no telemetry
+        configurePushNotifications()
     
-    queryAllNodes()
     #Setup polling interval
     pollNodes(minPollingInterval) 
 
@@ -920,11 +930,13 @@ def pollNodes(interval):
             #load nodes that are using polling into the queue
             nodes2poll.put(node)
         elif node['accessType'] == 'openbmcRest':
-            if 'listener' in node and not node['listener'].isAlive():
-                t = threading.Thread(target=notificationlistener.openSocket, args=[node['bmcHostname'], node['username'], node['password']])
-                node['listener'] = t
-                t.daemon = True
-                t.start()  
+            if not config.useTelem:
+                if 'listener' in node and not node['listener'].isAlive():
+                    print("Main process opening new connection to {bmc}".format(bmc=node['bmcHostname']))
+                    t = threading.Thread(target=notificationlistener.openSocket, args=[node['bmcHostname'], node['username'], node['password']])
+                    node['listener'] = t
+                    t.daemon = True
+                    t.start()  
     
     #check for dead push notification
     

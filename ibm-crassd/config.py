@@ -20,6 +20,7 @@ except ImportError:
 import threading
 import syslog
 import sys
+import multiprocessing
 
 global nodes2poll
 nodes2poll = queue.Queue()
@@ -37,6 +38,11 @@ global killNow
 killNow = False
 global networkErrorList
 networkErrorList = ['FQPSPIN0000M','FQPSPIN0001M', 'FQPSPIN0002M','FQPSPIN0003M','FQPSPIN0004M','FQPSPCR0020M', 'FQPSPSE0004M']
+global useTelem
+useTelem = False
+
+global enableDebug
+enableDebug = False
 
 global pluginPolicies
 pluginPolicies = {}
@@ -49,6 +55,9 @@ pluginVars = {}
 
 global telemPort
 telemPort = 53322
+
+global alertMessageQueue
+alertMessageQueue = multiprocessing.Queue()
 
 global configFileName
 configFileName = '/opt/ibm/ras/etc/ibm-crassd.config'
@@ -70,5 +79,8 @@ def errorLogger(severity, message):
          @param severity: the severity of the syslog entry to create
          @param message: string, the message to post in the syslog
     """
-    syslog.openlog(ident="ibm-crassd", logoption=syslog.LOG_PID|syslog.LOG_NOWAIT)
-    syslog.syslog(severity, message)    
+    if severity == syslog.LOG_DEBUG and not enableDebug:
+        pass
+    else:
+        syslog.openlog(ident="ibm-crassd", logoption=syslog.LOG_PID|syslog.LOG_NOWAIT)
+        syslog.syslog(severity, message)    
