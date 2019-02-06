@@ -26,7 +26,7 @@ try:
     import queue
 except ImportError:
     import Queue as queue
-import datetime
+import traceback
 import subprocess
 import os
 import socket
@@ -115,7 +115,31 @@ def connectionErrHandler(jsonFormat, errorStr, err):
             
             errorMessageStr = json.dumps(eventdict, sort_keys=True, indent=4, separators=(',', ': '), ensure_ascii=False)
             return(errorMessageStr)
-
+    elif errorStr == "LoginFailed":
+        if not jsonFormat:
+            return("FQPSPSE0067F: " + str(err))
+        else:
+            conerror = {}
+            conerror['CommonEventID'] = 'FQPSPSE0067F'
+            conerror['sensor']="N/A"
+            conerror['state']="N/A"
+            conerror['additionalDetails'] = str(err)
+            conerror['Message']="Unable to login to the BMC. Ensure the credentials provided are correct."
+            conerror['LengthyDescription'] = "A failure response was received from the BMC, indicating the login was not successful"
+            conerror['Serviceable']="No"
+            conerror['CallHomeCandidate']= "No"
+            conerror['Severity'] = "Warning"
+            conerror['EventType'] = "Administrative"
+            conerror['VMMigrationFlag'] = "Yes"
+            conerror["AffectedSubsystem"] = "Systems Management - Security"
+            conerror["timestamp"] = str(int(time.time()))
+            conerror["UserAction"] = "Correct the issue highlighted in additional details and try again"
+            eventdict = {}
+            eventdict['event0'] = conerror
+            eventdict['numAlerts'] = '1'
+            
+            errorMessageStr = json.dumps(eventdict, sort_keys=True, indent=4, separators=(',', ': '), ensure_ascii=False)
+            return(errorMessageStr)
     else:
         return("Unknown Error: "+ str(err))
 
@@ -139,12 +163,7 @@ def login(host, username, pw,jsonFormat):
         r = mysess.post('https://'+host+'/login', headers=httpHeader, json = {"data": [username, pw]}, verify=False, timeout=30)
         loginMessage = json.loads(r.text)
         if (loginMessage['status'] != "ok"):
-            print(loginMessage["data"]["description"].encode('utf-8')) 
-            sys.exit(1)
-#         if(sys.version_info < (3,0)):
-#             urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-#         if sys.version_info >= (3,0):
-#             requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning)
+            return (connectionErrHandler(jsonFormat, "LoginFailed", "Login Failed: {descript}, {statusCode}".format(descript=loginMessage['data']['description'], statusCode=loginMessage['message'])))
         return mysess
     except(requests.exceptions.Timeout):
         return (connectionErrHandler(jsonFormat, "Timeout", None))
@@ -163,8 +182,7 @@ def initSensors(host, username, password, session, xcatNodeName):
     except(requests.exceptions.Timeout):
         return(connectionErrHandler(True, "Timeout", None))
     
-    curtime = time.time()
-    sensors = json.loads(res.text)["data"]
+    sensors = res.json()["data"]
     sensorData[xcatNodeName] = {}
     for key in sensors:
         if 'PowerSupplyRedundancy' in key:
@@ -213,17 +231,24 @@ def processMessages():
         if killNow:
             break
         text = messageQueue.get()
-#         print("Processing Message")
         try:
             message = json.loads(text['msg'])
-            sensorName = message["path"].split('/')[-1]
-#             currentValue = sensorData[text['node']['bmcHostname']][sensorName]['value']
-#             newValue = message['properties']['Value']
-#             if newValue > currentValue:
-            with lock:
+            if 'logging' in message['path']:
+                config.errorLogger(syslog.LOG_DEBUG, "Event notification received for {bmc}.".format(bmc=text['node']['bmcHostname']))
+            if 'sensors' in message["path"]:
+                sensorName = message["path"].split('/')[-1]
                 sensorData[text['node']['xcatNodeName']][sensorName]['value'] = message['properties']['Value']
+                config.errorLogger(syslog.LOG_DEBUG, "Updated sensor readings for {bmc}.".format(bmc=text['node']['bmcHostname']))
+            else:
+                sendQueue.put(text['node'])
         except Exception as e:
-            pass
+            config.errorLogger(syslog.LOG_WARNING, "Error encountered processing BMC message from {bmc}".format(bmc=text['node']['bmcHostname']))
+            config.errorLogger(syslog.LOG_DEBUG, "BMC message was: {msg}".format(msg=text['msg']))
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            config.errorLogger(syslog.LOG_DEBUG, "Exception: Error: {err}, Details: {etype}, {fname}, {lineno}".format(err=e, etype=exc_type, fname=fname, lineno=exc_tb.tb_lineno))
+            traceback.print_tb(e.__traceback__)
+            
         messageQueue.task_done()
 
 def getNode():
@@ -239,24 +264,28 @@ def on_message(ws, message):
     thisNode = getNode()
     thisNode['activeTimer'] = time.time()
     thisNode['down'] = False
-#     print("New Message")
     messageQueue.put({'node': thisNode,'msg':message})
+    config.errorLogger(syslog.LOG_DEBUG, "Got Sensor reading from {bmc}".format(bmc=thisNode['bmcHostname']))
 
 def on_error(ws, error):
     thisNode = getNode()
     if thisNode['websocket'] == ws:
         thisNode['telemlistener'] = None
-    
+    config.errorLogger(syslog.LOG_DEBUG, "Websocket error for {bmc}, details: {err}".format(bmc=thisNode['bmcHostname'], err=error))
 
 def on_close(ws):
     thisNode = getNode()
     if thisNode['websocket'] == ws:
         thisNode['telemlistener'] = None
-
+    config.errorLogger(syslog.LOG_DEBUG, "Websocket closed for {bmc}".format(bmc=thisNode['bmcHostname']))
+    
 def on_open(ws):
     #open the websocket and subscribe to the sensors
-    data = {"paths": sensorList, "interfaces": ["xyz.openbmc_project.Sensor.Value"]}
+    thisNode = getNode()
+    data = {"paths": sensorList, "interfaces": ["xyz.openbmc_project.Sensor.Value","xyz.openbmc_project.Logging.Entry"]}
     ws.send(json.dumps(data))
+    sendQueue.put(thisNode)
+    config.errorLogger(syslog.LOG_DEBUG, "Websocket opened for {bmc}".format(bmc=thisNode['bmcHostname']))
 
 def createWebsocket(sescookie, bmcIP, node):
     cookieStr = ""
@@ -356,24 +385,43 @@ def startMonitoringProcess(nodeList):
     pm.start()
     activeThreads.append(ws)
     activeThreads.append(pm)
-    time.sleep(60)
-    global lock
+    time.sleep(10)
     global killNow
     while True:
         if killNow:
             break
+        if not sendQueue.empty():
+            pollNode = sendQueue.get()
+            mngedNodeList.append(nodeReferenceDict[pollNode['xcatNodeName']])
+            sendQueue.task_done()
         for node in nodeList:
             msgtimer = time.time() - node['activeTimer']
             if node['accessType'] == 'openbmcRest':
+                if not pm.isAlive():
+                    try:
+                        pm = threading.Thread(target = processMessages)
+                        pm.daemon = True
+                        pm.start()
+                    except Exception as e:
+                        config.errorLogger(syslog.LOG_ERR, "Failed to restart the thread for processing BMC telemetry notifications. ")
+                        exc_type, exc_obj, exc_tb = sys.exc_info()
+                        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                        config.errorLogger(syslog.LOG_DEBUG, "Exception: Error: {err}, Details: {etype}, {fname}, {lineno}".format(err=e, etype=exc_type, fname=fname, lineno=exc_tb.tb_lineno))
+                        traceback.print_tb(e.__traceback__)
                 if node['telemlistener'] is None:
                     try:
                         ws = threading.Thread(target = openWebSocketsThreads, args=[node])
                         ws.daemon = True
                         ws.start() 
                         node['telemlistener'] = ws
+                        config.errorLogger(syslog.LOG_ERR, "No thread found for monitoring {bmc} telemetry data. A new thread has been started.".format(bmc=node['bmcHostname']))
                     except Exception as e:
-                        pass
-                elif msgtimer > 60:
+                        config.errorLogger(syslog.LOG_ERR, "Error trying to restart a thread for monitoring bmc telemetry data.")
+                        exc_type, exc_obj, exc_tb = sys.exc_info()
+                        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                        config.errorLogger(syslog.LOG_DEBUG, "Exception: Error: {err}, Details: {etype}, {fname}, {lineno}".format(err=e, etype=exc_type, fname=fname, lineno=exc_tb.tb_lineno))
+                        traceback.print_tb(e.__traceback__)
+                elif msgtimer > 600:
                     try:
                         if node['retryCount'] <=3:
                             oldws = node['websocket']
@@ -409,30 +457,29 @@ def telemReceive():
         except:
             pass
 
-def init():
+def init(mngedNodeList):
     websocket.enableTrace(False)
     global gathererProcs
-    if len(config.mynodelist)%50 > 0:
+    nodespercore = 50
+    if len(config.mynodelist)%nodespercore > 0:
         oddNum = 1
-    else:
+    else:   
         oddNum = 0
-    nodeConcurrentProcs = int(len(config.mynodelist)/50) + oddNum
+    nodeConcurrentProcs = int(len(config.mynodelist)/nodespercore) + oddNum
     for num in range(nodeConcurrentProcs):
-        startNum = num*50
+        startNum = num*nodespercore
         monitorNodeList = []
         if oddNum == 1 and num == nodeConcurrentProcs:
             monitorNodeList = config.mynodelist[startNum:-1]
         else:
-            monitorNodeList = config.mynodelist[startNum:((num+1)*50)-1]
-        gathererProc = multiprocessing.Process(target=startMonitoringProcess, args=[monitorNodeList])
+            monitorNodeList = config.mynodelist[startNum:((num+1)*nodespercore)]
+        gathererProc = multiprocessing.Process(target=startMonitoringProcess, args=[monitorNodeList, mngedNodeList])
         gathererProc.daemon = True
         gathererProc.start()
         gathererProcs.append(gathererProc)
-        
-    
-           
+               
 def recvall(sock, n):
-    #helperfunction to receive n bytes or return None if EOF is hit
+    #helper function to receive n bytes or return None if EOF is hit
     data = b''
     while len(data) < n:
         packet = sock.recv(n - len(data))
@@ -520,7 +567,7 @@ def getFilteredData(filterInfo, sensorData):
     
 def on_new_client(clientsocket, addr):
     """
-         Run in a thread, sends telemetry data to a subscribed client
+         Run in a thread,under a subprocess, sends telemetry data to a subscribed client
            
          @param clientsocket: the socket opened with the subscriber
          @param addr: The address of the subscriber
@@ -568,7 +615,11 @@ def on_new_client(clientsocket, addr):
         except socket.timeout:
             pass
         except Exception as e:
-            print(e)
+            config.errorLogger(syslog.LOG_ERR, "Error processing message filters from client at: {caddress}.".format(caddress=addr))
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            config.errorLogger(syslog.LOG_DEBUG, "Exception: Error: {err}, Details: {etype}, {fname}, {lineno}".format(err=e, etype=exc_type, fname=fname, lineno=exc_tb.tb_lineno))
+            traceback.print_tb(e.__traceback__)
 
         
     for item in clientList:
@@ -611,9 +662,14 @@ def socket_server(servsocket):
                         s.close()
                         read_list.remove(s)
         except Exception as e:
-            pass
+            config.errorLogger(syslog.LOG_ERR, "Failed to open a telemetry server connection with a client.")
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            config.errorLogger(syslog.LOG_DEBUG, "Exception: Error: {err}, Details: {etype}, {fname}, {lineno}".format(err=e, etype=exc_type, fname=fname, lineno=exc_tb.tb_lineno))
+            traceback.print_tb(e.__traceback__)
+            
     servsocket.close()
-
+  
 def main():
     global telemUpdateQueue 
     telemUpdateQueue= multiprocessing.Queue()
@@ -768,14 +824,34 @@ def main():
     killNow = config.killNow
     global gathererProcs
     gathererProcs = []
-    init()
-    config.errorLogger(syslog.LOG_INFO, 'Starting Telemetry Streaming')
+    global nodeReferenceDict
+    nodeReferenceDict = {}
+    for node in config.mynodelist:
+        nodeReferenceDict[node['xcatNodeName']] = node.copy()
+    init(mngedNodeList)
+    
     sockServProcess = multiprocessing.Process(target=socket_server, args=[serversocket])
+    sockServProcess.daemon = True
     sockServProcess.start()
+    config.errorLogger(syslog.LOG_INFO, 'Started Telemetry Streaming')
+    
     while not config.killNow:
         time.sleep(1)
+        try:
+            while len(mngedNodeList)>0:
+#                 node = config.alertMessageQueue.get()
+                node = mngedNodeList.pop(0)
+                config.nodes2poll.put(node)
+#                 config.alertMessageQueue.task_done()
+        except Exception as e:
+            config.errorLogger(syslog.LOG_ERR, "Error processing an alert message.")
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            config.errorLogger(syslog.LOG_DEBUG, "Exception: Error: {err}, Details: {etype}, {fname}, {lineno}".format(err=e, etype=exc_type, fname=fname, lineno=exc_tb.tb_lineno))
+            traceback.print_tb(e.__traceback__)
     for i in range(1+len(gathererProcs)):
         killQueue.put(True)
+    
     sockServProcess.terminate()
     for aproc in gathererProcs:
         aproc.terminate()
