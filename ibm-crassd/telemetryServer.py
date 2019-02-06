@@ -159,9 +159,8 @@ def login(host, username, pw,jsonFormat):
     httpHeader = {'Content-Type':'application/json'}
     mysess = requests.session()
     try:
-        #seeing a hang here
         r = mysess.post('https://'+host+'/login', headers=httpHeader, json = {"data": [username, pw]}, verify=False, timeout=30)
-        loginMessage = json.loads(r.text)
+        loginMessage = r.json()
         if (loginMessage['status'] != "ok"):
             return (connectionErrHandler(jsonFormat, "LoginFailed", "Login Failed: {descript}, {statusCode}".format(descript=loginMessage['data']['description'], statusCode=loginMessage['message'])))
         return mysess
