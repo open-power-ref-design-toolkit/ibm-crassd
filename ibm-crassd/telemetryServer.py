@@ -170,7 +170,7 @@ def login(host, username, pw,jsonFormat):
         return (connectionErrHandler(jsonFormat, "ConnectionError", err))
 
 
-def initSensors(host, username, password, session, xcatNodeName):
+def initSensors(host, session, xcatNodeName):
     '''
         Gets initial values for sensors
     '''
@@ -205,17 +205,17 @@ def initSensors(host, username, password, session, xcatNodeName):
             if sensorname in sname:
                 sensorData[xcatNodeName][sensorname]['scale'] = scale
                 sensorData[xcatNodeName][sensorname]['value'] =sensors[key]['Value']
-#                 sensorData[host]['units'] = sensors[key]['Unit'].split('.')[-1]
                 sensorData[xcatNodeName][sensorname]['type'] = (sensorType, sensors[key]['Unit'].split('.')[-1])
     
     for key in sensorList:
+        if "logging" in key:
+            continue
         keyparts = key.split('/')
         stype = keyparts[-2]
         sname = keyparts[-1]
         if sname not in sensorData[xcatNodeName]:
             sensorData[xcatNodeName][sname] = {}
             sensorData[xcatNodeName][sname]['value'] = 0
-            sensorData[xcatNodeName][sname]['time'] = datetime.datetime.fromtimestamp(curtime).strftime("%Y-%m-%d %H:%M:%S")
             sensorData[xcatNodeName][sname]['type'] = (stype, typeUnitDict[stype])
             if 'fan_tach' in stype:
                 sensorData[xcatNodeName][sname]['scale'] = 1
@@ -357,14 +357,25 @@ def buildNodeList():
 def openWebSocketsThreads(node):            
     bmcIP = node['bmcHostname']
     systemName = node['xcatNodeName']
-    mysession = login(bmcIP,"root", "0penBmc", True)
-    node['activeTimer'] = time.time()
-    node['retryCount'] = 0
-    sescookie= mysession.cookies.get_dict()
-    initSensors(bmcIP, 'root', '0penBmc', mysession, systemName)
-    createWebsocket(sescookie, bmcIP, node)
+    mysession = login(bmcIP,node['username'], node['password'], True)
+    if not isinstance(mysession, str):
+        try:
+            node['activeTimer'] = time.time()
+            sescookie= mysession.cookies.get_dict()
+            initSensors(bmcIP, mysession, systemName)
+            createWebsocket(sescookie, bmcIP, node)
+            node['retryCount'] = 0
+        except Exception as e:
+            config.errorLogger(syslog.LOG_CRIT, "Failed to open the websocket with bmc {bmc}".format(bmc=bmcIP))
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            config.errorLogger(syslog.LOG_DEBUG, "Exception: Error: {err}, Details: {etype}, {fname}, {lineno}".format(err=e, etype=exc_type, fname=fname, lineno=exc_tb.tb_lineno))
+            traceback.print_tb(e.__traceback__)
+    else:
+        config.errorLogger(syslog.LOG_CRIT, "Failed to login to bmc {bmc}".format(bmc=bmcIP))
+        config.errorLogger(syslog.LOG_ERR, mysession)
 
-def startMonitoringProcess(nodeList):
+def startMonitoringProcess(nodeList, mngedNodeList):
     killQueueThread = threading.Thread(target=killQueueChecker)
     killQueueThread.daemon = True
     killQueueThread.start()
@@ -683,7 +694,8 @@ def main():
     global sensorData
     sensorData = {}
     global sensorList
-    sensorList = ["/xyz/openbmc_project/sensors/current/ps0_output_current",
+    sensorList = [
+        "/xyz/openbmc_project/sensors/current/ps0_output_current",
                     "/xyz/openbmc_project/sensors/current/ps1_output_current",
                     "/xyz/openbmc_project/sensors/fan_tach/fan0_0",
                     "/xyz/openbmc_project/sensors/fan_tach/fan0_1",
@@ -795,7 +807,8 @@ def main():
                     "/xyz/openbmc_project/sensors/voltage/ps0_input_voltage",
                     "/xyz/openbmc_project/sensors/voltage/ps0_output_voltage",
                     "/xyz/openbmc_project/sensors/voltage/ps1_input_voltage",
-                    "/xyz/openbmc_project/sensors/voltage/ps1_output_voltage"
+                    "/xyz/openbmc_project/sensors/voltage/ps1_output_voltage",
+                    "/xyz/openbmc_project/logging"
                   ]
     requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning)
     global wsClosed
@@ -810,6 +823,8 @@ def main():
     get_millis = lambda: int(round(time.time() * 1000))
     global sendQueue
     sendQueue = queue.Queue()
+    nodeListManager = multiprocessing.Manager()
+    mngedNodeList = nodeListManager.list()
     global serversocket
     serversocket = socket.socket()
     global serverhostname
