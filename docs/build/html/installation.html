@@ -1,0 +1,254 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>IBM CRASSD Installation &#8212; ibm-crassd 0.9-0 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Checking health of the ibm-crassd service" href="troubleshooting.html" />
+    <link rel="prev" title="Welcome to ibm-crassd’s documentation!" href="index.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="ibm-crassd-installation">
+<span id="ibm-crassd-installation"></span><h1>IBM CRASSD Installation<a class="headerlink" href="#ibm-crassd-installation" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="prerequisites-version-0-8-10">
+<span id="prerequisites-version-0-8-10"></span><h2>Prerequisites version &lt; 0.8-10<a class="headerlink" href="#prerequisites-version-0-8-10" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>Python 2.7 or greater</li>
+<li>Java 1.7.0 or greater</li>
+<li>python-configparser (found in EPEL)</li>
+<li>python-websocket-client</li>
+<li>python-requests if monitoring 8335-GTG, 8335-GTC, 8335-GTW</li>
+<li>openbmctool if monitoring 8335-GTG, 8335-GTC, 8335-GTW</li>
+<li>ipmitool</li>
+</ul>
+</div>
+<div class="section" id="prerequisites-for-ibm-crassd-0-8-10-and-above">
+<span id="prerequisites-for-ibm-crassd-0-8-10-and-above"></span><h2>Prerequisites for ibm-crassd 0.8-10 and above<a class="headerlink" href="#prerequisites-for-ibm-crassd-0-8-10-and-above" title="Permalink to this headline">¶</a></h2>
+<p>This version switches to python 3 compatibility</p>
+<ul class="simple">
+<li>Python 3.4 or greater</li>
+<li>Java 1.7.0 or greater</li>
+<li>python-configparser (found in EPEL)</li>
+<li>python34-websocket-client</li>
+<li>python34-requests if monitoring 8335-GTG, 8335-GTC, 8335-GTW</li>
+<li>openbmctool if monitoring 8335-GTG, 8335-GTC, 8335-GTW</li>
+<li>ipmitool</li>
+<li>pexpect</li>
+</ul>
+</div>
+<div class="section" id="installation">
+<span id="installation"></span><h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="ess">
+<span id="ess"></span><h3>ESS<a class="headerlink" href="#ess" title="Permalink to this headline">¶</a></h3>
+<ol class="simple">
+<li>From the ESS management node type <code class="docutils literal notranslate"><span class="pre">yum</span> <span class="pre">install</span> <span class="pre">/install/gss/otherpkgs/rhels7/ppc64le/gss/ibm-crassd-0.8-1.ppc64le.rpm</span></code></li>
+</ol>
+</div>
+<div class="section" id="rhel-based-systems">
+<span id="rhel-based-systems"></span><h3>RHEL Based Systems<a class="headerlink" href="#rhel-based-systems" title="Permalink to this headline">¶</a></h3>
+<ol class="simple">
+<li>Transfer the rpm to the management system or service node you wish to install this service on.</li>
+<li>Type <code class="docutils literal notranslate"><span class="pre">yum</span> <span class="pre">install</span> <span class="pre">/path/to/rpm</span></code>, where /path/to/rpm is the full path to the rpm you just copied to the system.</li>
+</ol>
+</div>
+</div>
+<div class="section" id="upgrading">
+<span id="upgrading"></span><h2>Upgrading:<a class="headerlink" href="#upgrading" title="Permalink to this headline">¶</a></h2>
+<ol class="simple">
+<li>Backup the ibm-crassd.config file found at <code class="docutils literal notranslate"><span class="pre">/opt/ibm/ras/etc/ibm-crassd.config</span></code></li>
+<li>Backup the bmclastreports.ini file found at <code class="docutils literal notranslate"><span class="pre">/opt/ibm/ras/etc/bmclastreports.ini</span></code></li>
+<li>Stop the service using <code class="docutils literal notranslate"><span class="pre">systemctl</span> <span class="pre">stop</span> <span class="pre">ibm-crassd</span></code></li>
+<li>Install ibm-crassd using the instructions above.</li>
+<li>Restore the two backed up files to their original locations.</li>
+<li>Start the service using <code class="docutils literal notranslate"><span class="pre">systemctl</span> <span class="pre">start</span> <span class="pre">ibm-crassd</span></code>.</li>
+</ol>
+</div>
+<div class="section" id="configuration">
+<span id="configuration"></span><h2>Configuration<a class="headerlink" href="#configuration" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="manually-configuring-nodes">
+<span id="manually-configuring-nodes"></span><h3>Manually Configuring Nodes<a class="headerlink" href="#manually-configuring-nodes" title="Permalink to this headline">¶</a></h3>
+<ol class="simple">
+<li>Open the configuration file located at <code class="docutils literal notranslate"><span class="pre">/opt/ibm/ras/etc/ibm-crassd.config</span></code></li>
+<li>The <code class="docutils literal notranslate"><span class="pre">[nodes]</span></code> section is located near the top.</li>
+<li>Nodes must be added or removed sequentially. For example, node1, node2, node3.
+a.    See the section on nodes to get an explanation of each of the fields comprising nodes.</li>
+<li>Save and close the file.</li>
+<li>Node changes will be picked up when the service is restarted.</li>
+</ol>
+</div>
+<div class="section" id="node-entry-information-from-the-ibm-crassd-configuration-file-opt-ibm-ras-etc-ibm-crassd-config">
+<span id="node-entry-information-from-the-ibm-crassd-configuration-file-opt-ibm-ras-etc-ibm-crassd-config"></span><h3>Node Entry information from the ibm-crassd configuration file (/opt/ibm/ras/etc/ibm-crassd.config)<a class="headerlink" href="#node-entry-information-from-the-ibm-crassd-configuration-file-opt-ibm-ras-etc-ibm-crassd-config" title="Permalink to this headline">¶</a></h3>
+<p>Node entries in the crassd configuration file contain several elements. The entire property set must also be encompassed with {}. Below is an example entry.
+<code class="docutils literal notranslate"><span class="pre">node1</span> <span class="pre">=</span> <span class="pre">{&quot;bmcHostname&quot;:</span> <span class="pre">&quot;my-9006-bmc.aus.stglabs.ibm.com&quot;,</span> <span class="pre">&quot;xcatNodeName&quot;:</span> <span class="pre">&quot;xcat2&quot;,</span> <span class="pre">&quot;accessType&quot;:&quot;ipmi&quot;}</span></code></p>
+<p>Each property comes as a pair on the right hand side of the equals sign. The properties don’t have to be in a specific order. All property IDs and values must be encased in quotes.
+•   bmcHostname: This is the string that is either the BMC hostname or the BMC IP address.•   xcatNodeName: This is the hostname of the Host OS. This may also be the IP of the Host OS.
+•   accessType: This tells what the connection method is to the bmc. Currently accepted values are ipmi (for 9006, 5104 Machine Types) and openbmcRest for 8335-GTC and 8335-GTW systems.</p>
+</div>
+<div class="section" id="setting-up-the-base-configuration-section">
+<span id="setting-up-the-base-configuration-section"></span><h3>Setting up the base configuration section<a class="headerlink" href="#setting-up-the-base-configuration-section" title="Permalink to this headline">¶</a></h3>
+<p>This section allows the user to specify some basic controls for the ibm-crassd service.
+The maxThreads variable is used to define the number of processing threads that are used to collect, parse and forward alerts to the various plugins, based on what’s enabled. The current recommended setting for this variable is 40.</p>
+</div>
+</div>
+<div class="section" id="configuration-for-integrating-into-ess">
+<span id="configuration-for-integrating-into-ess"></span><h2>Configuration for integrating into ESS<a class="headerlink" href="#configuration-for-integrating-into-ess" title="Permalink to this headline">¶</a></h2>
+<ol class="simple">
+<li>Open the configuration file in <code class="docutils literal notranslate"><span class="pre">/var/mmfs/mmsysmon/mmsysmonitor.conf</span></code>.</li>
+<li>Locate the <code class="docutils literal notranslate"><span class="pre">[general]</span></code> section of the file.</li>
+<li>Add entry: <code class="docutils literal notranslate"><span class="pre">powerhw_enabled</span> <span class="pre">=</span> <span class="pre">true</span></code></li>
+<li>Save and close the file.</li>
+<li>Open the configuration file located at <code class="docutils literal notranslate"><span class="pre">/opt/ibm/ras/etc/ibm-crassd.config</span></code></li>
+<li>Locate the <code class="docutils literal notranslate"><span class="pre">[notify]</span></code> section</li>
+<li>Set <code class="docutils literal notranslate"><span class="pre">ESS=True</span></code></li>
+<li>Set <code class="docutils literal notranslate"><span class="pre">CSM=False</span></code></li>
+<li>Enable any other plugins by setting their name to True. Disable any plugins you do not wish to use by setting their value to False.
+a.  For example <code class="docutils literal notranslate"><span class="pre">ESS=True</span></code>, <code class="docutils literal notranslate"><span class="pre">CSM=False</span></code>, <code class="docutils literal notranslate"><span class="pre">logstash=False</span></code>.</li>
+<li>Save and close the file.</li>
+<li>Type <code class="docutils literal notranslate"><span class="pre">mmsysmoncontrol</span> <span class="pre">restart</span></code> to reload the mmhealth service and pick up the changes.</li>
+<li>Start the service with <code class="docutils literal notranslate"><span class="pre">systemctl</span> <span class="pre">start</span> <span class="pre">ibm-crassd</span></code>. It is also recommended to enable the service so it starts automatically when the Host OS starts. This is done using the command <code class="docutils literal notranslate"><span class="pre">systemctl</span> <span class="pre">enable</span> <span class="pre">ibm-crassd</span></code></li>
+</ol>
+</div>
+<div class="section" id="configuration-for-integrating-into-csm">
+<span id="configuration-for-integrating-into-csm"></span><h2>Configuration for integrating into CSM<a class="headerlink" href="#configuration-for-integrating-into-csm" title="Permalink to this headline">¶</a></h2>
+<ol class="simple">
+<li>Ensure CSM services are running according to CSM documentation
+•   csmrestd must be running on the same node as the ibm-crassd service.</li>
+<li>Open the configuration file located at <code class="docutils literal notranslate"><span class="pre">/opt/ibm/ras/etc/ibm-crassd.config</span></code></li>
+<li>Locate the <code class="docutils literal notranslate"><span class="pre">[notify]</span></code> section</li>
+<li>Set <code class="docutils literal notranslate"><span class="pre">ESS=False</span></code></li>
+<li>Set <code class="docutils literal notranslate"><span class="pre">CSM=True</span></code></li>
+<li>Enable any other plugins by setting their name to True. Disable any plugins you do not wish to use by setting their value to False.
+•   For example <code class="docutils literal notranslate"><span class="pre">ESS=False</span></code>, <code class="docutils literal notranslate"><span class="pre">CSM=True</span></code>, <code class="docutils literal notranslate"><span class="pre">logstash=True</span></code>.</li>
+<li>Locate the <code class="docutils literal notranslate"><span class="pre">[csm]</span></code> section of the configuration file.
+•   Specify the IP address and Port for the csmrestd service. The defaults are specified and will work with most configurations.</li>
+<li>Save and close the file.</li>
+<li>Start the service with <code class="docutils literal notranslate"><span class="pre">systemctl</span> <span class="pre">start</span> <span class="pre">ibm-crassd</span></code>. It is also recommended to enable the service so it starts automatically when the Host OS starts. This is done using the command <code class="docutils literal notranslate"><span class="pre">systemctl</span> <span class="pre">enable</span> <span class="pre">ibm-crassd</span></code></li>
+</ol>
+</div>
+<div class="section" id="configuration-for-integrating-with-logstash">
+<span id="configuration-for-integrating-with-logstash"></span><h2>Configuration for integrating with logstash<a class="headerlink" href="#configuration-for-integrating-with-logstash" title="Permalink to this headline">¶</a></h2>
+<ol class="simple">
+<li>Ensure logstash services are running according to logstash documentation</li>
+<li>Open the configuration file located at <code class="docutils literal notranslate"><span class="pre">/opt/ibm/ras/etc/ibm-crassd.config</span></code></li>
+<li>Locate the <code class="docutils literal notranslate"><span class="pre">[notify]</span></code> section</li>
+<li>Set <code class="docutils literal notranslate"><span class="pre">logstash=True</span></code></li>
+<li>Enable any other plugins by setting their name to True. Disable any plugins you do not wish to use by setting their value to False.
+•   For example <code class="docutils literal notranslate"><span class="pre">ESS=False</span></code>, <code class="docutils literal notranslate"><span class="pre">CSM=True</span></code>, <code class="docutils literal notranslate"><span class="pre">logstash=True</span></code>.</li>
+<li>Locate the [logstash] section of the configuration file.
+•   Specify the IP address and Port for the logstash service. The defaults are specified.</li>
+<li>Save and close the file.</li>
+<li>Start the service with <code class="docutils literal notranslate"><span class="pre">systemctl</span> <span class="pre">start</span> <span class="pre">ibm-crassd</span></code>. It is also recommended to enable the service so it starts automatically when the Host OS starts. This is done using the command <code class="docutils literal notranslate"><span class="pre">systemctl</span> <span class="pre">enable</span> <span class="pre">ibm-crassd</span></code></li>
+</ol>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">ibm-crassd</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">IBM CRASSD Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#prerequisites-version-0-8-10">Prerequisites version &lt; 0.8-10</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#prerequisites-for-ibm-crassd-0-8-10-and-above">Prerequisites for ibm-crassd 0.8-10 and above</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#installation">Installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#upgrading">Upgrading:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#configuration">Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#configuration-for-integrating-into-ess">Configuration for integrating into ESS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#configuration-for-integrating-into-csm">Configuration for integrating into CSM</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#configuration-for-integrating-with-logstash">Configuration for integrating with logstash</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="troubleshooting.html">Checking health of the ibm-crassd service</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code.html">Documentation for the Code</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">Welcome to ibm-crassd’s documentation!</a></li>
+      <li>Next: <a href="troubleshooting.html" title="next chapter">Checking health of the ibm-crassd service</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, Justin Thaler.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/installation.md.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
