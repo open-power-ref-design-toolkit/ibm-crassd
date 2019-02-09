@@ -4,7 +4,7 @@ Summary: IBM POWER LC Cluster RAS Service Package
 Name: ibm-crassd
 Version: %{_version}
 Release: %{_release}
-License: BSD
+License: Apache 2.0
 Group: System Environment/Base
 BuildArch: ppc64le
 URL: http://www.ibm.com/
@@ -74,7 +74,7 @@ rm -rf $RPM_BUILD_ROOT
 %defattr(-,root,root,-)
 /opt/ibm/ras/lib/crassd.jar
 %config /opt/ibm/ras/etc/ibm-crassd.config
-%attr(755,root,root) /opt/ibm/ras/bin/ibm-crassd.py
+%attr(755,root,root) /opt/ibm/ras/bin/ibm_crassd.py
 /opt/ibm/ras/bin/telemetryServer.py
 /opt/ibm/ras/bin/config.py
 /opt/ibm/ras/bin/notificationlistener.py
