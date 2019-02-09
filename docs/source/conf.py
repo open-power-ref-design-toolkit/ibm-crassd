@@ -14,7 +14,8 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('/home/thalerj/Documents/RAS/Products/CORAL/RAS Code/ibm-crassd/ibm-crassd/'))
+
+sys.path.insert(0,os.path.abspath('../../ibm-crassd/'))
 
 #Add in support for markdown
 from recommonmark.parser import CommonMarkParser
@@ -28,13 +29,13 @@ source_suffix = ['.rst', '.md']
 # -- Project information -----------------------------------------------------
 
 project = 'ibm-crassd'
-copyright = '2018, Justin Thaler'
+copyright = '2018, IBM'
 author = 'Justin Thaler'
 
 # The short X.Y version
 version = ''
 # The full version, including alpha/beta/rc tags
-release = '0.9-0'
+release = '0.9-8'
 
 
 # -- General configuration ---------------------------------------------------
@@ -84,7 +85,11 @@ pygments_style = None
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'alabaster'
+on_rtd = os.environ.get('READTHEDOCS') == 'True'
+if on_rtd:
+    html_theme = 'default'
+else:
+    html_theme = 'default'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -160,7 +165,7 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
     (master_doc, 'ibm-crassd', 'ibm-crassd Documentation',
-     author, 'ibm-crassd', 'One line description of project.',
+     author, 'ibm-crassd', 'Open-source management POWER LC integration module.',
      'Miscellaneous'),
 ]
 
