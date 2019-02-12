@@ -10,8 +10,14 @@ Welcome to ibm-crassd's documentation!
    :maxdepth: 2
    :caption: Contents:
 
+   introduction
    installation
+   upgrading
+   configuring
    troubleshooting
+   pluginguidelines
+   telemlistenerguideline
+   building
    code
 
 
