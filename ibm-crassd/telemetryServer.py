@@ -238,6 +238,7 @@ def processMessages():
                 sensorName = message["path"].split('/')[-1]
                 if 'Value' in message['properties']:
                     sensorData[text['node']['xcatNodeName']][sensorName]['value'] = message['properties']['Value']
+#                 config.errorLogger(syslog.LOG_DEBUG, "Updated sensor readings for {bmc}.".format(bmc=text['node']['bmcHostname']))
             else:
                 sendQueue.put(text['node'])
         except Exception as e:
@@ -264,7 +265,7 @@ def on_message(ws, message):
     thisNode['activeTimer'] = time.time()
     thisNode['down'] = False
     messageQueue.put({'node': thisNode,'msg':message})
-    config.errorLogger(syslog.LOG_DEBUG, "Got Sensor reading from {bmc}".format(bmc=thisNode['bmcHostname']))
+#     config.errorLogger(syslog.LOG_DEBUG, "Got Sensor reading from {bmc}".format(bmc=thisNode['bmcHostname']))
 
 def on_error(ws, error):
     thisNode = getNode()
