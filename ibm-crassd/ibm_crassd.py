@@ -866,7 +866,10 @@ def initialize():
     
     #Enable debug messages if needed
     if 'enableDebugMsgs' in confParser['base_configuration']:
-        config.enableDebug = confParser['base_configuration']['enableDebugMsgs']
+        if 'True' in confParser['base_configuration']['enableDebugMsgs']:
+            config.useTelem = True
+        else:
+            config.useTelem = False
     try:
         maxThreads = int(confParser['base_configuration']['maxThreads'])
     except KeyError:
