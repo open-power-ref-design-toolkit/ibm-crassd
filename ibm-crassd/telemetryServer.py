@@ -236,8 +236,8 @@ def processMessages():
                 config.errorLogger(syslog.LOG_DEBUG, "Event notification received for {bmc}.".format(bmc=text['node']['bmcHostname']))
             if 'sensors' in message["path"]:
                 sensorName = message["path"].split('/')[-1]
-                sensorData[text['node']['xcatNodeName']][sensorName]['value'] = message['properties']['Value']
-                config.errorLogger(syslog.LOG_DEBUG, "Updated sensor readings for {bmc}.".format(bmc=text['node']['bmcHostname']))
+                if 'Value' in message['properties']:
+                    sensorData[text['node']['xcatNodeName']][sensorName]['value'] = message['properties']['Value']
             else:
                 sendQueue.put(text['node'])
         except Exception as e:
