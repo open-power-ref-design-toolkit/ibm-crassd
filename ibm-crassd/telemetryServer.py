@@ -14,6 +14,25 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 # 
+
+"""
+    This module establishes websocket connections to all the managed bmcs then starts a socket based server.
+    With the socket server, clients can subscribe to a stream of sensor readings using filters. Filters
+    can be based on sensor name and sensor type. A client can also adjust the frequency to a maximum rate of
+    once per second. 
+    
+    This module when establishing websocket connections, will assign a maximum of 50 nodes per subprocess. 
+    Each of the subprocesses will collect the push notification, and process it into the sensor data dictionary
+    structure. The socket server also establishes it's own subprocess so it can handle dealing with multiple
+    clients. Each websocket subprocess will receive an average rate of 2.5 Mbps worth per 50 monitored nodes.
+    
+    The socket server will listen on all established network interfaces including the local host. This allows
+    telemetry data to be streamed to a local service, or to a remote monitoring application. 
+    
+    In the event of a connection loss to a BMC this module will also work on establishing a new connection
+    to the BMC and should only surface one connection loss message after 3 attempts of failing to reconnect. 
+    This error message will be sent to the established plugins to forward to a configured log manager like ELK. 
+"""
 import websocket
 import time
 import sys
