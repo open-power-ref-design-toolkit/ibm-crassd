@@ -403,7 +403,10 @@ def startMonitoringProcess(nodeList, mngedNodeList):
             break
         if not sendQueue.empty():
             pollNode = sendQueue.get()
-            mngedNodeList.append(nodeReferenceDict[pollNode['xcatNodeName']])
+            if 'xcatNodeName' not in pollNode:
+                continue
+            else:
+                mngedNodeList.append(nodeReferenceDict[pollNode['xcatNodeName']])
             sendQueue.task_done()
         for node in nodeList:
             msgtimer = time.time() - node['activeTimer']
@@ -465,8 +468,12 @@ def telemReceive():
         try:
             newData = telemUpdateQueue.get()
             sensorData.update(newData)
-        except:
-            pass
+        except Exception as e:
+            config.errorLogger(syslog.LOG_DEBUG, "Error updating sensor data with new readings.")
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            config.errorLogger(syslog.LOG_DEBUG, "Exception: Error: {err}, Details: {etype}, {fname}, {lineno}".format(err=e, etype=exc_type, fname=fname, lineno=exc_tb.tb_lineno))
+            traceback.print_tb(e.__traceback__)
 
 def init(mngedNodeList):
     websocket.enableTrace(False)
@@ -658,6 +665,11 @@ def socket_server(servsocket):
         if killNow:
             break
         try:
+            if not dataUpdaterThread.isAlive():
+                dataUpdaterThread = threading.Thread(target=telemReceive)
+                dataUpdaterThread.daemon = True
+                dataUpdaterThread.start()
+                config.errorLogger(syslog.LOG_DEBUG, "Restarted the data consolidation thread")
             readable, writeable, errored = select.select(read_list, [], [], 30)
             for s in readable:
                 if s is servsocket:
