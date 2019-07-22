@@ -12,3 +12,6 @@
 dist/
 lib/
 docs/build/
+.project
+.pydevproject
+.settings/
