@@ -1,13 +1,13 @@
 #!/usr/bin/python3 -u
 
 #  Copyright 2017 IBM Corporation
-#
+# 
 #    Licensed under the Apache License, Version 2.0 (the "License");
 #    you may not use this file except in compliance with the License.
 #    You may obtain a copy of the License at
-#
+# 
 #        http://www.apache.org/licenses/LICENSE-2.0
-#
+# 
 #    Unless required by applicable law or agreed to in writing, software
 #    distributed under the License is distributed on an "AS IS" BASIS,
 #    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -43,14 +43,14 @@ def sigHandler(signum, frame):
          @return: set global kill now to true and lead to termination
     """ 
     if (signum == signal.SIGTERM or signum == signal.SIGINT):
-        print("Termination signal received.")
+        config.errorLogger(syslog.LOG_DEBUG, "Termination Signal received: {sigNum}".format(sigNum=signum))
         global killNow
         killNow = True
         config.killNow = True
     elif(signum == signal.SIGUSR1):
-        errorLogger(syslog.LOG_INFO,"Queue size: " + str(nodes2poll.qsize()))
+        config.errorLogger(syslog.LOG_DEBUG,"Queue size: " + str(nodes2poll.qsize()))
     else:
-        print("Signal received" + signum)
+        config.errorLogger(syslog.LOG_DEBUG, "Signal received: {sigNum}".format(sigNum=signum))
 
 
 def updateTimesforLastReports(signum, frame):
@@ -81,8 +81,8 @@ def updateTimesforLastReports(signum, frame):
             except Exception as e:
                 exc_type, exc_obj, exc_tb = sys.exc_info()
                 fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-                print("exception: ", exc_type, fname, exc_tb.tb_lineno)
-                print(e)
+                config.errorLogger(LOG_ERR, "exception: {etype} {fname} {lineNum}".format(etype=exc_type, fname=fname, lineNum=exc_tb.tb_lineno))
+                config.errorLogger(LOG_ERR, "{excDetails}".format(excDetails=e))
             try:
                 os.remove(config.updateNodeTimesfile)
                 for section in Updatesconfparser.sections():
@@ -184,9 +184,9 @@ def updateBMCLastReports():
         except Exception as e:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-            print("exception: ", exc_type, fname, exc_tb.tb_lineno)
+            config.errorLogger(syslog.LOG_DEBUG,"exception: ", exc_type, fname, exc_tb.tb_lineno)
             traceback.print_tb(e.__traceback__)
-            print(e)
+            config.errorLogger(syslog.LOG_DEBUG,str(e))
             continue
 
         updateConfFile.task_done()
@@ -245,8 +245,8 @@ def getBMCAlerts(node):
     except Exception as e:
         exc_type, exc_obj, exc_tb = sys.exc_info()
         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-        print("exception: ", exc_type, fname, exc_tb.tb_lineno)
-        print(e)
+        config.errorLogger(syslog.LOG_DEBUG,"exception: ", exc_type, fname, exc_tb.tb_lineno)
+        config.errorLogger(syslog.LOG_DEBUG, str(e))
         traceback.print_tb(e.__traceback__)
         eventsDict = {'numAlerts': 0, 'failedPoll': True}
     
@@ -390,7 +390,7 @@ def BMCEventProcessor():
             password = node['password']
             resetFailedNotify(bmcHostname)
             try:
-                print(name +": " + bmcHostname)
+                config.errorLogger(syslog.LOG_DEBUG, str(name +": " + bmcHostname))
                 #get the alerts from the bmc and place in a common format
                 eventsDict = getBMCAlerts(node)
                 
@@ -434,11 +434,10 @@ def BMCEventProcessor():
                             processAlert(eventsDict[event], bmcHostname, impactednode, username, password, node['accessType'])                                   
                 nodes2poll.task_done()
             except Exception as e:
-                print
                 exc_type, exc_obj, exc_tb = sys.exc_info()
                 fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-                print("exception: ", exc_type, fname, exc_tb.tb_lineno)
-                print(e)
+                config.errorLogger(syslog.LOG_DEBUG,"exception: {type} {fname} {lineNo}".format( exc_type, fname, exc_tb.tb_lineno))
+                config.errorLogger(syslog.LOG_DEBUG, str(e))
             eventsDict.clear()
             
             
@@ -541,8 +540,8 @@ def createNodeList(confParser):
     except Exception as e:
         exc_type, exc_obj, exc_tb = sys.exc_info()
         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-        print("exception: ", exc_type, fname, exc_tb.tb_lineno)
-        print(e)
+        config.errorLogger(syslog.LOG_DEBUG,"exception: {type} {fname} {lineno}".format( exc_type, fname, exc_tb.tb_lineno))
+        config.errorLogger(syslog.LOG_DEBUG, str(e))
         errorLogger(syslog.LOG_CRIT, "Unable to read node list from configuration file")
         sys.exit()
     
@@ -634,7 +633,7 @@ def setupNotifications():
     createNodeList(confParser)
     
     for i in getPlugins():
-        print("Loading Plugin " + i["name"])
+        config.errorLogger(syslog.LOG_DEBUG,"Loading Plugin " + i["name"])
         plugin = loadPlugins(i)
         for key in notifyList:
             if key in i["name"]:
@@ -867,9 +866,9 @@ def initialize():
     #Enable debug messages if needed
     if 'enableDebugMsgs' in confParser['base_configuration']:
         if 'True' in confParser['base_configuration']['enableDebugMsgs']:
-            config.useTelem = True
+            config.enableDebug = True
         else:
-            config.useTelem = False
+            config.enableDebug = False
     try:
         maxThreads = int(confParser['base_configuration']['maxThreads'])
     except KeyError:
@@ -884,7 +883,7 @@ def initialize():
     #Create the worker threads
     
     for i in range(maxThreads):
-        print("Creating thread " + str(i))
+        config.errorLogger(syslog.LOG_DEBUG,"Creating thread " + str(i))
 
         t = threading.Thread(target=BMCEventProcessor)
         t.daemon = True
@@ -903,6 +902,7 @@ def initialize():
             if 'telemetryPort' in confParser['base_configuration']:
                 config.telemPort = int(confParser['base_configuration']['telemetryPort'])
                 config.useTelem = True
+            global telemThread
             telemThread = threading.Thread(target=telemetryServer.main)
             telemThread.daemon = True  
             telemThread.start()
@@ -935,7 +935,7 @@ def pollNodes(interval):
         elif node['accessType'] == 'openbmcRest':
             if not config.useTelem:
                 if 'listener' in node and not node['listener'].isAlive():
-                    print("Main process opening new connection to {bmc}".format(bmc=node['bmcHostname']))
+                    config.errorLogger(syslog.LOG_DEBUG,"Main process opening new connection to {bmc}".format(bmc=node['bmcHostname']))
                     t = threading.Thread(target=notificationlistener.openSocket, args=[node['bmcHostname'], node['username'], node['password']])
                     node['listener'] = t
                     t.daemon = True
@@ -954,15 +954,19 @@ if __name__ == '__main__':
     signal.signal(signal.SIGINT, sigHandler)
     signal.signal(signal.SIGUSR1, sigHandler)
     signal.signal(signal.SIGUSR2, updateTimesforLastReports)
+    global telemThread
     try:
         initialize()
-        print(os.getpid())
+        config.errorLogger(syslog.LOG_DEBUG, str(os.getpid()))
         while(True):
-            time.sleep(1)
+            time.sleep(0.5)
             if(killNow):
                 break
+        if telemThread is not None:
+            config.errorLogger(syslog.LOG_DEBUG, "Waiting on the telemetry server to stop.")
+            telemThread.join()
         errorLogger(syslog.LOG_ERR, "The ibm-crassd service has been stopped")
         sys.exit()
     except KeyboardInterrupt:
-        print ("Terminating")
+        config.errorLogger(syslog.LOG_DEBUG, "Terminating")
         sys.exit()
