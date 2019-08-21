@@ -17,10 +17,10 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 BuildRequires: java-devel >= 1.7.0
 
 Requires: java >= 1.7.0
-Requires: python34 
-Requires: python34-requests
+Requires: python36 
+Requires: python36-requests
 Requires: python-configparser
-Requires: python34-websocket-client
+Requires: python36-websocket-client
 Requires: libstdc++
 Requires: pexpect
 
