@@ -1,26 +1,16 @@
-# Copyright (c) 2017 International Business Machines.  All right reserved.
-%define _binaries_in_noarch_packages_terminate_build   0
-Summary: IBM POWER LC Cluster RAS Service Package
-Name: ibm-crassd
-Version: %{_version}
-Release: %{_release}
-License: Apache 2.0
-Group: System Environment/Base
-BuildArch: ppc64le
-URL: http://www.ibm.com/
-Source0: %{name}-%{version}-%{release}.tgz
-#Remove for specific versions of libstdc as errl files have requirements not satisfied by base os. Still runs fine with newer versions. 
-AutoReqProv: no
-Prefix: /opt
-BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
-
-BuildRequires: java-devel >= 1.7.0
+Name        : ibm-crassd
+Version     : 1.0
+Release     : 1
+Group       : System Environment/Base
+BuildArch   : ppc64le
+License     : Apache 2.0
+Vendor      : IBM
+URL         : http://ibm.com
+Summary     : IBM POWER LC Cluster RAS Service Package
 
 Requires: java >= 1.7.0
-Requires: python34 
-Requires: python34-requests
+Requires: python3
 Requires: python-configparser
-Requires: python34-websocket-client
 Requires: libstdc++
 Requires: pexpect
 
@@ -39,33 +29,9 @@ es to aggregate BMC node data, apply service policy, and forward recommendation
 to cluster service management utilities.  Node data includes hardware machine st
 ate including environmental, reliability, service, and failure data.
 
-%prep
-%setup -q -n %{name}-%{version}-%{release}
-
-%pre
-
-%build
-%{__make}
-
-%install
-#rm -rf $RPM_BUILD_ROOT
-export DESTDIR=$RPM_BUILD_ROOT/opt/ibm/ras
-mkdir -p $DESTDIR/bin
-mkdir -p $DESTDIR/bin/plugins
-mkdir -p $DESTDIR/bin/ppc64le
-mkdir -p $DESTDIR/etc
-mkdir -p $DESTDIR/lib
-mkdir -p $RPM_BUILD_ROOT/usr/lib/systemd/system
-mkdir -p $RPM_BUILD_ROOT/usr/lib/systemd/system-preset
-
-%{__make} install
-
-cp ibm-crassd/*.py $DESTDIR/bin
-cp -r ibm-crassd/plugins/* $DESTDIR/bin/plugins
-cp ibm-crassd/ibm-crassd.config $DESTDIR/etc
-cp ibm-crassd.service $RPM_BUILD_ROOT/usr/lib/systemd/system
-cp 85-ibm-crassd.preset $RPM_BUILD_ROOT/usr/lib/systemd/system-preset
-cp errl/ppc64le/errl $DESTDIR/bin/ppc64le
+%post
+#!/bin/bash
+systemctl daemon-reload 2> /dev/null || true
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -75,13 +41,13 @@ rm -rf $RPM_BUILD_ROOT
 /opt/ibm/ras/lib/crassd.jar
 %config /opt/ibm/ras/etc/ibm-crassd.config
 %attr(755,root,root) /opt/ibm/ras/bin/ibm_crassd.py
-/opt/ibm/ras/bin/telemetryServer.py
-/opt/ibm/ras/bin/config.py
-/opt/ibm/ras/bin/notificationlistener.py
 %attr(755,root,root) /opt/ibm/ras/bin/updateNodeTimes.py
 %attr(755,root,root) /opt/ibm/ras/bin/buildNodeList.py
 %attr(755,root,root) /opt/ibm/ras/bin/analyzeFQPSPPW0034M.py
 %attr(755,root,root) /opt/ibm/ras/bin/analyzeFQPSPAA0001M.py
+/opt/ibm/ras/bin/telemetryServer.py
+/opt/ibm/ras/bin/config.py
+/opt/ibm/ras/bin/notificationlistener.py
 /opt/ibm/ras/bin/plugins/
 /opt/ibm/ras/bin/plugins/ibm_csm/
 /opt/ibm/ras/bin/plugins/ibm_csm/__init__.py
@@ -98,7 +64,3 @@ rm -rf $RPM_BUILD_ROOT
 /usr/lib/systemd/system/ibm-crassd.service
 /usr/lib/systemd/system-preset/85-ibm-crassd.preset
 
-
-%post
-
-%changelog

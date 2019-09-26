@@ -1,0 +1,12 @@
+Package: ibm-crassd
+Version: 1.0
+License: Apache 2.0
+Vendor: IBM
+Architecture: ppc64el
+Maintainer: IBM
+Installed-Size: 34158
+Section: System Environment/Base
+Priority: extra
+Homepage: http://ibm.com
+Description: IBM POWER LC Cluster RAS Service Package
+
