@@ -22,6 +22,9 @@ import syslog
 import sys
 import multiprocessing
 
+global nodespercore
+nodespercore = 15
+
 global nodes2poll
 nodes2poll = queue.Queue()
 global updateConfFile
