@@ -45,6 +45,7 @@ rm -rf $RPM_BUILD_ROOT
 %attr(755,root,root) /opt/ibm/ras/bin/buildNodeList.py
 %attr(755,root,root) /opt/ibm/ras/bin/analyzeFQPSPPW0034M.py
 %attr(755,root,root) /opt/ibm/ras/bin/analyzeFQPSPAA0001M.py
+/opt/ibm/ras/bin/__init__.py
 /opt/ibm/ras/bin/telemetryServer.py
 /opt/ibm/ras/bin/config.py
 /opt/ibm/ras/bin/notificationlistener.py
