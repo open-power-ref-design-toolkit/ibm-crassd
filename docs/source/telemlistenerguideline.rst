@@ -5,22 +5,26 @@ This section discusses creating a listener for metric (telemetry) streaming. Thi
 
 Overview
 ================
-The ibm-crassd service will host collected sensor readings on a socket. This socket is setup to listen on all IP addresses for where the Host OS is installed, and uses a predefined port number. This port number is configurable in the ibm-crassd.config file. When ibm-crassd has started the telemetry service and is ready to receive a connection from a client, a system journal entry is posted indicating the telemetry service has started. It's at this point a client may connect to the socket server and start listening to the stream of readings. Additionally, once connected filters can be applied.  The data is sent from ibm-crassd to listeners in a serialized JSON format with a 4-byte header. The ibm-crassd service will also handle reconnection attempts to dropped BMC connections, should a connection to the BMC be lost. Until the connection is re-established, **ibm-crassd will forward the last known reading of the sensors**. A full example of a python metric listener can be found in the examples directory on the github repository. 
+The ibm-crassd service will host collected sensor readings on a socket. This socket is setup to listen on all IP addresses for where the Host OS is installed, and uses a predefined port number. This port number is configurable in the ibm-crassd.config file. When ibm-crassd has started the telemetry service and is ready to receive a connection from a client, a system journal entry is posted indicating the telemetry service has started. It's at this point a client may connect to the socket server and start listening to the stream of readings. Additionally, once connected filters can be applied.  The data is sent from ibm-crassd to listeners in a serialized JSON format with a 4-byte header. The ibm-crassd service will also handle re-connection attempts to dropped BMC connections, should a connection to the BMC be lost. Until the connection is re-established, **ibm-crassd will forward the last known reading of the sensors**. A full example of a python metric listener can be found in the examples directory on the github repository. 
 
 Data Structure Review
 ===========================
-The sensor data is formatted in a dictionary at the top level. Most of this data is accessed directly using a combination of the reference name for the node ``xcatNodeName`` from the config file, and the name for the sensor. The AC922 systems have a maximum of 111 sensors. Below is a generic example showing dictionary representation.  
+The sensor data is formatted in a dictionary at the top level. Most of this data is accessed directly using a combination of the reference name for the node ``xcatNodeName`` from the configuration file, and the name for the sensor. The AC922 systems have a maximum of 111 sensors. Below is a generic example showing dictionary representation.  
 
 .. code-block:: JSON
     :linenos:
 
     {
+        "Time_Sent": "String. Time in seconds since UNIX epoch when the sample was sent",
         "xcatNodeName": {
             "sensorName1": {
                 "scale": "Float. Indicates what to multiple the value by.",
                 "value":  "Integer. The reading of the sensor.",
-                "type": ["string. desc of the sensor.", "string. Units for the sensor."] 
-            }
+                "type": ["string. Description of the sensor.", "string. Units for the sensor."] 
+            },
+            "LastUpdateRecieved": "String. Time in seconds since epoch, when the last update from the BMC was received.",
+            "Node State": "String. The state of the node. Can be Powered On or Powered Off",
+	    "Connected": "Boolean. true if the connection with the BMC is active, otherwise false."
         }
     }
 
@@ -30,17 +34,21 @@ The following is an example of a single node and two sensors.
     :linenos:
 
     {
+        "Time_Sent": "1563222466",
         "compute1": {
             "cpu0_temp": {
                 "scale": 0.001,
-                "value": 56000,
-                "type": ["temperature", "Celsius"] 
+                "value": null,
+                "type": ["temperature", "Celsius"]
             },
             "total_power": {
                 "scale": 1,
                 "value": 161,
                 "type": ["power", "Watts"]
-            }
+            },
+            "LastUpdateReceived": "1563222466",
+            "Node State": "Powered Off",
+            "Connected": true
         }
     }
 
@@ -55,7 +63,7 @@ Connection to the telemetry server has been simplified. All an application needs
     import struct
     import json
 
-    HOST = '127.0.0.1'  # Standard loopback interface address (localhost)
+    HOST = '127.0.0.1'  # Standard loop-back interface address (localhost)
     PORT = 53322        # Port to listen on (non-privileged ports are > 1023)
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     print("Connecting to ", HOST)
@@ -64,7 +72,7 @@ Connection to the telemetry server has been simplified. All an application needs
 
 Processing the Data Received from the Telemetry Server
 ======================================================
-Once the connection is setup as shown above we can begin processing the packets received from the ibm-crassd service. There's 2 pieces to deal with from the data packets. The first is the header. The header contains the size of the json structure. The struct library is used to unpack the header and get the message length. Below is an example of reading this:
+Once the connection is setup as shown above we can begin processing the packets received from the ibm-crassd service. There's 2 pieces to deal with from the data packets. The first is the header. The header contains the size of the JSON structure. The struct library is used to unpack the header and get the message length. Below is an example of reading this:
 
 .. code-block:: python
     :linenos:
@@ -95,7 +103,7 @@ Once the connection is setup as shown above we can begin processing the packets 
             break
         msglen = struct.unpack('>I', raw_msglen)[0]
 
-Next we need to continue in the crassd_client function, and get the actual sensor readings. The code snippet below uses the length collected from the header to retrive all of the data that was sent, from the socket buffer. The data is then loaded into a dictionary to prepare for usage, using the json.loads function. 
+Next we need to continue in the crassd_client function, and get the actual sensor readings. The code snippet below uses the length collected from the header to retrieve all of the data that was sent, from the socket buffer. The data is then loaded into a dictionary to prepare for usage, using the JSON.loads function. 
 
 .. code-block:: python
     :linenos:
