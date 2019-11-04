@@ -892,10 +892,11 @@ def initialize():
     t = threading.Thread(target=updateBMCLastReports)
     t.daemon = True
     t.start()
-    
-
-    
+     
     #start TelemetryServer if enabled
+    if 'telemetry_configuration' in confParser:
+        if 'nodesPerGathererProcess' in confParser['telemetry_configuration']:
+            config.nodespercore = int(confParser['telemetry_configuration']['nodesPerGathererProcess'])
     if 'enableTelemetry' in confParser['base_configuration']:
         enableTelem = confParser['base_configuration']['enableTelemetry']
         if confParser['base_configuration']['enableTelemetry'] == 'True':

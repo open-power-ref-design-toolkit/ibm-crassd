@@ -56,6 +56,9 @@ pluginVars = {}
 global telemPort
 telemPort = 53322
 
+global nodespercore
+nodespercore = 10
+
 global alertMessageQueue
 alertMessageQueue = multiprocessing.Queue()
 
