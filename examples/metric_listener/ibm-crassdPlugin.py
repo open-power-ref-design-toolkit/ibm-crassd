@@ -50,7 +50,16 @@ def init():
     #Get Chart Types
     with lock:
         for systemName in sensorData:
+            if 'Time_Sent' in systemName: continue
             for key in sensorData[systemName]:
+                if 'LastUpdateReceived' in key:
+                    continue
+                if 'Connected' in key:
+                    continue
+                if 'NodeState' in key:
+                    continue
+                if 'type' not in sensorData[systemName][key]:
+                    continue
                 stype = sensorData[systemName][key]['type']
                 if stype not in typeList:
                     typeList.append(stype)
@@ -58,16 +67,29 @@ def init():
     #build some charts
     with lock:
         for systemName in sensorData:
-            for key in typeList:
-                chartString = 'CHART {bmc}.{type} {type} "{bmc} {desc}" {units} {type} OpenBMC line 100000 {updateFreq}'.format(bmc=systemName, units=key[1], type = key[0], desc = key[0].title(), updateFreq=update_every/1000)
-                print (chartString)
-                for sensName in sensorData[systemName]:
-                    if sensorData[systemName][sensName]['type'][0] in key[0]:
-                        scale = sensorData[systemName][sensName]['scale']
-                        if scale <1:
-                            scale = int(1/scale)
-                        dimString = 'DIMENSION {sname} {sname} absolute 1 {divscale}'.format(sname=sensName, divscale = scale)
-                        print(dimString)
+            if 'Time_Sent' in systemName: continue
+            else:
+                for key in typeList:
+                    if key is None: continue
+                    chartString = 'CHART {bmc}.{type} {type} "{bmc} {desc}" {units} {type} OpenBMC line 100000 {updateFreq}'.format(bmc=systemName, units=key[1], type = key[0], desc = key[0].title(), updateFreq=update_every/1000)
+                    print (chartString)
+                    for sensName in sensorData[systemName]:
+                        if 'LastUpdateReceived' in sensName:
+                            continue
+                        elif 'NodeState' in sensName:
+                            continue
+                        elif 'Connected' in sensName:
+                            continue
+                        elif 'type' not in sensorData[systemName][sensName]: continue
+                        elif sensorData[systemName][sensName]['type'] is None: continue
+                        elif sensorData[systemName][sensName]['type'][0] in key[0]:
+                            scale = sensorData[systemName][sensName]['scale']
+                            if scale <1:
+                                scale = int(1/scale)
+                            dimString = 'DIMENSION {sname} {sname} absolute 1 {divscale}'.format(sname=sensName, divscale = scale)
+                            print(dimString)
+                        else:
+                            pass
 
 def socketConnector():
     while True:
@@ -123,10 +145,20 @@ def updateCharts():
             #Post some data for netdata
             with lock:
                 for systemName in sensorData:
+                    if 'Time_Sent' in systemName: continue
                     for key in typeList:
+                        if key is None: continue
                         print('BEGIN {sysName}.{type} {dtime}'.format(sysName = systemName, type = key[0], dtime=dt*1000))
                         for sname in sensorData[systemName]:
-                            if sensorData[systemName][sname]['type'][0] in key[0]:
+                            if 'LastUpdateReceived' in sname:
+                                continue
+                            elif 'NodeState' in sname:
+                                continue
+                            elif 'Connected' in sname:
+                                continue
+                            elif 'type' not in sensorData[systemName][sname]: continue
+                            elif sensorData[systemName][sname]['type'] is None: continue
+                            elif sensorData[systemName][sname]['type'][0] in key[0]:
                                 try:
                                     print('SET {sname} = {svalue}'.format(sname = sname, svalue = sensorData[systemName][sname]['value']))
                                 except Exception as e:
@@ -136,6 +168,8 @@ def updateCharts():
                                         logf.write((systemName+ ' ' + key + ' ' + sname))
                                         logf.write(json.dumps(sensorData, sort_keys=True, indent=4, separators=(',', ': '), ensure_ascii=False))
                                     continue
+                            else:
+                                pass
                         print('END')
      
         time.sleep(update_every/1000/10)
@@ -165,3 +199,4 @@ if __name__ == "__main__":
     with open('/tmp/ibm-crassdNetdataPlugin.txt', 'w') as logf:
         logf.write("The plugin has terminated")
     
+
