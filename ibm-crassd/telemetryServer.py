@@ -375,6 +375,10 @@ def initSensors(host, session, xcatNodeName, node):
                 keyparts = key.split('/')
                 sensorType = keyparts[-2]
                 sensorname = keyparts[-1]
+                if 'inventory' in sensorname:
+                    continue
+                if 'chassis' in sensorname:
+                    continue
                 for sname in senslist:
                     if sensorname in sname:
                         sensorData[xcatNodeName][sensorname] = {}
