@@ -37,9 +37,32 @@ def getxcatData():
     except Exception as e:
         print("Error: Unable to get info from xcat, aborting.")
         print(e)
+        output = None
     return output
-    
-def parseXcatOutput(output):
+
+def getBMCaccessInfo():
+    output = None
+    try:
+        tempoutput = subprocess.check_output(['/opt/xcat/sbin/tabdump', 'passwd']).decode('utf-8')
+        for line in tempoutput.split("\n"):
+            if 'openbmc' in line:
+                if output is None:
+                    output = {}
+                lineparts = line.split(',')
+                output['openbmc'] = {'user': lineparts[1][1:-1], 'pass':lineparts[2][1:-1]}
+            elif 'ipmi' in line:
+                if output is None:
+                    output = {}
+                lineparts = line.split(',')
+                output['ipmi'] = {'user': lineparts[1][1:-1], 'pass':lineparts[2][1:-1]}
+            else:
+                continue
+    except Exception as e:
+        print("Error: Unable to get BMC access credentials from xcat. Aborting")
+        print(e)
+        output = None
+    return output
+def parseXcatOutput(output, accessInfo):
     
     bysnDict = {}
     entry = ""
@@ -65,26 +88,41 @@ def parseXcatOutput(output):
         elif 'mgt=' in info:
             if 'openbmc' in info.split('='):
                 nodeInfo['accessType'] = 'openbmcRest'
+                if accessInfo is not None:
+                    nodeInfo['username'] = accessInfo['openbmc']['user']
+                    nodeInfo['password'] = accessInfo['openbmc']['pass']
             else:
                 nodeInfo['accessType'] = 'ipmi'
+                if accessInfo is not None:
+                    nodeInfo['username'] = accessInfo['ipmi']['user']
+                    nodeInfo['password'] = accessInfo['ipmi']['pass']
         elif 'servicenode=' in info:
             nodeInfo['serviceNode'] = info.split('=')[1].split(',')[0]
         else: 
             continue
     return bysnDict
 
-def createConfOutput(myData):
+def createConfOutput(myData, accessInfo):
     
     for key in myData:
         if key is not None:
             print ("For nodes monitored by {serviceNode}: ".format(serviceNode=key))
             count = 1
             for node in myData[key]:
-                print('node{number} = {{"bmcHostname": "{bmc}", "xcatNodeName": "{host}", "accessType":"{access}"}}').format(
-                    number=count, 
-                    bmc = myData[key][node]['bmcHostname'],
-                    host= myData[key][node]['xcatNodeName'],
-                    access = myData[key][node]['accessType'])
+                if(accessInfo is not None):
+                    print('node{number} = {{"bmcHostname": "{bmc}", "xcatNodeName": "{host}", "accessType":"{access}", "username": "{user}","password":"{password}" }}').format(
+                        number=count, 
+                        bmc = myData[key][node]['bmcHostname'],
+                        host= myData[key][node]['xcatNodeName'],
+                        access = myData[key][node]['accessType'], 
+                        user = myData[key][node]['username'],
+                        password = myData[key][node]['password'])
+                else:
+                    print('node{number} = {{"bmcHostname": "{bmc}", "xcatNodeName": "{host}", "accessType":"{access}"}}').format(
+                        number=count, 
+                        bmc = myData[key][node]['bmcHostname'],
+                        host= myData[key][node]['xcatNodeName'],
+                        access = myData[key][node]['accessType'])
                 count+=1
             print("\n")
         
@@ -98,9 +136,10 @@ if __name__ == '__main__':
 #     with open(filename, 'r') as f:
 #         xCatInfo = f.read()
     if xCatInfo is not None:
-        parsedData = parseXcatOutput(xCatInfo)
+        bmcAccessInfo = getBMCaccessInfo()
+        parsedData = parseXcatOutput(xCatInfo, bmcAccessInfo)
         if not args.json:
-            createConfOutput(parsedData)
+            createConfOutput(parsedData, bmcAccessInfo)
         else:
             print(json.dumps(parsedData, sort_keys=True, indent=4, separators=(',', ': ')))  
         

@@ -623,7 +623,7 @@ def openWebSocketsThreads(node):
         node['telemlistener'] = None
         node['connecting'] = False
         if mysession is not None:
-            config.errorLogger(syslog.LOG_CRIT, "Failed to login to BMC: {bmc}".format(bmc=bmcIP))
+            config.errorLogger(syslog.LOG_CRIT, "Failed to login to BMC: {bmc} {uid} {pwd}".format(bmc=bmcIP, uid=node['username'], pwd=node['password']))
             config.errorLogger(syslog.LOG_ERR, "{err}".format(err=mysession))
 
 def nullAllNodeSensReadings(node):

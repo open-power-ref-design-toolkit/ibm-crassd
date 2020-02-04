@@ -687,12 +687,13 @@ def getMinimumPollingInterval(numWorkerThreads):
     return minPollingInterval
 
 def setDefaultBMCCredentials(node):
-    if mynodelist[-1]['accessType'] == "ipmi":
-        node ['username'] = "ADMIN"
-        node['password'] = "ADMIN"
-    elif mynodelist[-1]['accessType'] == 'openbmcRest':
-        node['username'] = "root"
-        node['password'] = "0penBmc"
+    if ['username'] not in node: 
+        if mynodelist[-1]['accessType'] == "ipmi":
+            node ['username'] = "ADMIN"
+            node['password'] = "ADMIN"
+        elif mynodelist[-1]['accessType'] == 'openbmcRest':
+            node['username'] = "root"
+            node['password'] = "0penBmc"
         
 def updateConfigFileNodes(confParser, nodes2monitor):
     """
@@ -705,7 +706,9 @@ def updateConfigFileNodes(confParser, nodes2monitor):
         nodeDict['node{num}'.format(num=count)] = {
             'bmcHostname': nodes2monitor[node]['bmcHostname'],
             'xcatNodeName': nodes2monitor[node]['xcatNodeName'],
-            'accessType': nodes2monitor[node]['accessType']}
+            'accessType': nodes2monitor[node]['accessType'], 
+            'username': nodes2monitor[node]['username'],
+            'password': nodes2monitor[node]['password']}
         count += 1
     confParser['nodes'] = nodeDict
     with open(config.configFileName, 'w') as configfile:
@@ -737,13 +740,22 @@ def autoConfigureNodes(confParser):
             sys.exit(1)
         try:
             for node in nodes2monitor:
-                mynodelist.append({'xcatNodeName': nodes2monitor[node]['xcatNodeName'], 
+                if 'username' not in node:
+                    mynodelist.append({'xcatNodeName': nodes2monitor[node]['xcatNodeName'], 
                                    'bmcHostname': nodes2monitor[node]['bmcHostname'],
                                    'accessType': nodes2monitor[node]['accessType'],
                                    'pollFailedCount': 0,
                                    'lastLogTime': '0',
                                    'dupTimeIDList': []})
-                
+                else:
+                    mynodelist.append({'xcatNodeName': nodes2monitor[node]['xcatNodeName'], 
+                                   'bmcHostname': nodes2monitor[node]['bmcHostname'],
+                                   'accessType': nodes2monitor[node]['accessType'],
+                                   'username': nodes2monitor[node]['username'],
+                                   'password': nodes2monitor[node]['password'],
+                                   'pollFailedCount': 0,
+                                   'lastLogTime': '0',
+                                   'dupTimeIDList': []})
                 setDefaultBMCCredentials(mynodelist[-1])
                 if mynodelist[-1]['accessType'] == 'openbmcRest':
                     needWebsocket = True
@@ -853,7 +865,7 @@ def initialize():
         #The node list seems short, attempt to scan for nodes that report to this service node
         autoConfigureNodes(confParser)
         updateMaxThreads(confParser)
-
+        errorLogger(syslog.LOG_INFO, "Auto-configuration Node Count: {count}".format(count=len(mynodelist)))
     #Check for analysis scripts
     getIDstoAnalyze(confParser)
     #load last reported times from storage file to prevent duplicate entries
