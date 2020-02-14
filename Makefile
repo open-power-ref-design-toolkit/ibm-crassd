@@ -18,7 +18,7 @@ JAVA=/usr/bin/java
 CLASSPATH=./classes
 VER=1.1
 REL=5
-ARCH=pp64le
+ARCH=$(shell uname -p)
 PROD=ibm-crassd
 NAME=$(PROD)-$(VER)-$(REL).$(ARCH)
 
@@ -33,6 +33,7 @@ java: ;mkdir -p classes && $(JAVAC) -d  ./classes `find . -name *.java`
 clean: ;rm -rf ./classes ./lib
 jar: java;mkdir -p ./lib && cd classes/ && $(JAR) -cvfe ../lib/crassd.jar ipmiSelParser.ipmiSelParser * ../ipmiSelParser/*.properties ../ipmiSelParser/resources/*
 install: java jar
+	mkdir -p $(DESTDIR)/opt/ibm/ras/{lib,etc,bin}
 	cp ./lib/* $(DESTDIR)/opt/ibm/ras/lib
 	cp ./ibm-crassd/*.config $(DESTDIR)/opt/ibm/ras/etc
 	cp ./ibm-crassd/*.py $(DESTDIR)/opt/ibm/ras/bin
@@ -47,9 +48,9 @@ rpm: java jar
 	for i in BUILD BUILDROOT RPMS SOURCES SPECS SRPMS; do mkdir -p $(RPMDIR)/$$i; done
 	for i in bin lib etc; do mkdir -p $(RPMDIR)/BUILDROOT/$(NAME)/opt/ibm/ras/$$i; done
 	for i in system system-preset; do mkdir -p $(RPMDIR)/BUILDROOT/$(NAME)/usr/lib/systemd/$$i; done
-	cp ibm-crassd-ppc64le.spec $(RPMDIR)
+	cp ibm-crassd-$(ARCH).spec $(RPMDIR)
 	make install DESTDIR=$(RPMDIR)/BUILDROOT/$(NAME)
-	rpmbuild --define '_topdir $(RPMDIR)' -bb $(RPMDIR)/ibm-crassd-ppc64le.spec
+	rpmbuild --define '_topdir $(RPMDIR)' -bb $(RPMDIR)/ibm-crassd-$(ARCH).spec
 
 deb: java jar
 	rm -rf $(DEBDIR)
