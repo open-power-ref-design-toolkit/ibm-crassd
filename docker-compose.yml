@@ -1,0 +1,33 @@
+version: '3'
+services:
+  crassd:
+    container_name: crassd
+    build: .
+    image: src-crassd
+    hostname: crassdHost
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+      - ${PWD}/examples/ibm-crassd.config:/opt/ibm/ras/etc/ibm-crassd.config
+    privileged: true
+    
+  netdata:
+    container_name: netdata
+    build: netdataPlugin/
+    image: netdata_crassdplugin
+    hostname: netdataHost
+    depends_on:
+      - crassd
+    ports:
+      - 19999:19999
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - apparmor:unconfined
+    volumes:
+      - /etc/passwd:/host/etc/passwd:ro
+      - /etc/group:/host/etc/group:ro
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+    environment:
+      - VIRTUALIZATION=${VIRTUALIZATION}
+
