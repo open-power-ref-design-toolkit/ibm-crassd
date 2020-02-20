@@ -14,17 +14,13 @@ VOLUME [ "/sys/fs/cgroup" ]
 FROM centos8-systemd
 RUN yum install -y epel-release && yum update -y && \
 yum groupinstall -y 'Development Tools' && \
-yum install -y libgcc && \
-yum install -y python3-requests python3-websocket-client python3-pycparser && \
-yum install -y java && \
-yum install -y openssh openssh-server openssh-clients openssl-libs && \
-yum install -y java-devel && \
-yum -y clean all
+yum install -y libgcc
+RUN yum install -y openssh openssh-server openssh-clients openssl-libs
+RUN yum install -y java
 
-COPY . /crassdBase
-WORKDIR /crassdBase
-RUN yum install -y openbmctool/*
-RUN make && make install
+COPY ibm-crassd-*.rpm /
+#RUN yum install -y openbmctool/*
+RUN yum install -y ibm-crasd-*.rpm
 RUN systemctl enable ibm-crassd
 
 EXPOSE 53322

@@ -12,7 +12,7 @@ services:
     
   netdata:
     container_name: netdata
-    build: netdataPlugin/
+    build: ../netdataPlugin/
     image: netdata_crassdplugin
     hostname: netdataHost
     depends_on:
