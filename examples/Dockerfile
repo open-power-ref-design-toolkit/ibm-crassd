@@ -1,3 +1,4 @@
+# Example of a docker file to generate an image for ibm-crassd
 FROM centos:8 AS centos8-systemd
 ENV container docker
 RUN (cd /lib/systemd/system/sysinit.target.wants/; for i in *; do [ $i == \
@@ -18,9 +19,9 @@ yum install -y libgcc
 RUN yum install -y openssh openssh-server openssh-clients openssl-libs
 RUN yum install -y java
 
-COPY ibm-crassd-*.rpm /
-#RUN yum install -y openbmctool/*
-RUN yum install -y ibm-crasd-*.rpm
+COPY *.rpm /
+RUN yum install -y openbmctool-*.rpm
+RUN yum install -y ibm-crassd-*.rpm
 RUN systemctl enable ibm-crassd
 
 EXPOSE 53322

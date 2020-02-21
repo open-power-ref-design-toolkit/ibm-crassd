@@ -3,11 +3,11 @@
 Summary: IBM POWER LC Cluster RAS Service Package
 Name: ibm-crassd
 Version: %{_version}
-Release: %{_release}
+Release: %{_release}%{?dist}
 License: Apache 2.0
 Group: System Environment/Base
 URL: http://www.ibm.com/
-Source0: %{name}-%{version}-%{release}.tgz
+Source0: %{name}-%{version}.tgz
 BuildArch: noarch
 Prefix: /opt
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
@@ -50,7 +50,7 @@ to cluster service management utilities.  Node data includes hardware machine st
 ate including environmental, reliability, service, and failure data.
 
 %prep
-%setup -q -n %{name}-%{version}-%{release}
+%setup
 
 %pre
 

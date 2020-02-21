@@ -1,3 +1,4 @@
+### Spins up crassd-netdata containers to monitor any nodes in the ibm-crassd.config file. Netdata can be access at the specified port 
 version: '3'
 services:
   crassd:
@@ -7,9 +8,9 @@ services:
     hostname: crassdHost
     volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
-      - ${PWD}/examples/ibm-crassd.config:/opt/ibm/ras/etc/ibm-crassd.config
+      - ${PWD}/ibm-crassd.config:/opt/ibm/ras/etc/ibm-crassd.config
     privileged: true
-    
+
   netdata:
     container_name: netdata
     build: ../netdataPlugin/
