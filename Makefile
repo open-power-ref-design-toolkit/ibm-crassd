@@ -18,9 +18,8 @@ JAVA=/usr/bin/java
 CLASSPATH=./classes
 VER=1.1
 REL=5
-ARCH=pp64le
 PROD=ibm-crassd
-NAME=$(PROD)-$(VER)-$(REL).$(ARCH)
+NAME=$(PROD)-$(VER)-$(REL)
 
 # Need to test RPMDIR to see if it is set. Otherwise set it.
 RPMDIR := $(if $(RPMDIR),$(RPMDIR),$(shell pwd)/rpm)
@@ -33,11 +32,11 @@ java: ;mkdir -p classes && $(JAVAC) -d  ./classes `find . -name *.java`
 clean: ;rm -rf ./classes ./lib
 jar: java;mkdir -p ./lib && cd classes/ && $(JAR) -cvfe ../lib/crassd.jar ipmiSelParser.ipmiSelParser * ../ipmiSelParser/*.properties ../ipmiSelParser/resources/*
 install: java jar
+	mkdir -p $(DESTDIR)/opt/ibm/ras/{lib,etc,bin}
 	cp ./lib/* $(DESTDIR)/opt/ibm/ras/lib
 	cp ./ibm-crassd/*.config $(DESTDIR)/opt/ibm/ras/etc
-	cp ./ibm-crassd/*.py $(DESTDIR)/opt/ibm/ras/bin
+	rsync -avr --exclude='*FQPSP*' ./ibm-crassd/*.py $(DESTDIR)/opt/ibm/ras/bin
 	cp -R ./ibm-crassd/plugins $(DESTDIR)/opt/ibm/ras/bin
-	cp -R ./errl/$(ARCH) $(DESTDIR)/opt/ibm/ras/bin
 	cp ./*.preset $(DESTDIR)/usr/lib/systemd/system-preset
 	cp ./*.service $(DESTDIR)/usr/lib/systemd/system
 
@@ -47,9 +46,9 @@ rpm: java jar
 	for i in BUILD BUILDROOT RPMS SOURCES SPECS SRPMS; do mkdir -p $(RPMDIR)/$$i; done
 	for i in bin lib etc; do mkdir -p $(RPMDIR)/BUILDROOT/$(NAME)/opt/ibm/ras/$$i; done
 	for i in system system-preset; do mkdir -p $(RPMDIR)/BUILDROOT/$(NAME)/usr/lib/systemd/$$i; done
-	cp ibm-crassd-ppc64le.spec $(RPMDIR)
+	cp ibm-crassd.spec $(RPMDIR)
 	make install DESTDIR=$(RPMDIR)/BUILDROOT/$(NAME)
-	rpmbuild --define '_topdir $(RPMDIR)' -bb $(RPMDIR)/ibm-crassd-ppc64le.spec
+	rpmbuild --define '_topdir $(RPMDIR)' -bb $(RPMDIR)/ibm-crassd.spec
 
 deb: java jar
 	rm -rf $(DEBDIR)
@@ -70,7 +69,4 @@ deb: java jar
 	chmod +x $(DEBDIR)/opt/ibm/ras/bin/ibm_crassd.py
 	chmod +x $(DEBDIR)/opt/ibm/ras/bin/updateNodeTimes.py
 	chmod +x $(DEBDIR)/opt/ibm/ras/bin/buildNodeList.py
-	chmod +x $(DEBDIR)/opt/ibm/ras/bin/analyzeFQPSPPW0034M.py
-	chmod +x $(DEBDIR)/opt/ibm/ras/bin/analyzeFQPSPAA0001M.py
-	chmod +x $(DEBDIR)/opt/ibm/ras/bin/$(ARCH)/errl
-	dpkg-deb -b $(DEBDIR) $(DEBDIR)/DEBIAN/ibm-crassd-$(VER).$(REL)-$(ARCH).deb
+	dpkg-deb -b $(DEBDIR) $(DEBDIR)/DEBIAN/ibm-crassd-$(VER).$(REL).deb
