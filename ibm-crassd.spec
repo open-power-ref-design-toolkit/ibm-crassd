@@ -21,7 +21,6 @@ Requires: libstdc++
 Requires: python3
 Requires: python3-requests
 Requires: python3-websocket-client
-Requires: libstdc++
 Requires: python3-pexpect
 %endif
 

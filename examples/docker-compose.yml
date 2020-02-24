@@ -4,7 +4,7 @@ services:
   crassd:
     container_name: crassd
     build: .
-    image: src-crassd
+    image: ibm-crassd
     hostname: crassdHost
     volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
@@ -13,7 +13,7 @@ services:
 
   netdata:
     container_name: netdata
-    build: ../netdataPlugin/
+    build: ../examples/metric_listener/
     image: netdata_crassdplugin
     hostname: netdataHost
     depends_on:
