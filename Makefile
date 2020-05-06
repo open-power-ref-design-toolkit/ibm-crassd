@@ -17,7 +17,8 @@ JAVAH=/usr/bin/javah
 JAVA=/usr/bin/java
 CLASSPATH=./classes
 VER=1.1
-REL=5
+REL=6
+ARCH=x86_64
 PROD=ibm-crassd
 NAME=$(PROD)-$(VER)-$(REL)
 
