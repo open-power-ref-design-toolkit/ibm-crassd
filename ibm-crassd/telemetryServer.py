@@ -965,6 +965,8 @@ def socket_server(servsocket):
     global serverhostname
     global killSig
     global sensorData
+    global syncTime
+    syncTime = int(time.time())
     for node in config.mynodelist:
         sensorData[node['xcatNodeName']] = {}
         sensorData[node['xcatNodeName']]['LastUpdateReceived'] = None
@@ -1006,6 +1008,12 @@ def socket_server(servsocket):
                     else:
                         s.close()
                         read_list.remove(s)
+            if ((int(time.time())-syncTime) >= 600):
+                # syncronize the connection status for each node
+                for node in config.mynodelist:
+                    config.nodeProperties[node['xcatNodeName']]['LastUpdateReceived'] = sensorData[node['xcatNodeName']]['LastUpdateReceived']
+                    config.nodeProperties[node['xcatNodeName']]['Connected'] = sensorData[node['xcatNodeName']]['Connected']
+                    config.nodeProperties[node['xcatNodeName']]['NodeState'] = sensorData[node['xcatNodeName']]['NodeState']
         except Exception as e:
             config.errorLogger(syslog.LOG_ERR, "Failed to open a telemetry server connection with a client.")
             exc_type, exc_obj, exc_tb = sys.exc_info()

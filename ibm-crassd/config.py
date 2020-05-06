@@ -13,6 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 """
+from ibm_crassd import updateMaxThreads
 try:
     import Queue as queue
 except ImportError:
@@ -21,6 +22,9 @@ import threading
 import syslog
 import sys
 import multiprocessing
+
+global crassd_version
+crassd_version = '1.1.7'
 
 global nodes2poll
 nodes2poll = queue.Queue()
@@ -41,6 +45,8 @@ networkErrorList = ['FQPSPIN0000M','FQPSPIN0001M', 'FQPSPIN0002M','FQPSPIN0003M'
 global useTelem
 useTelem = False
 
+global maxThreads
+maxThreads = 1
 global enableDebug
 enableDebug = False
 
@@ -74,6 +80,12 @@ else:
 analyzeIDList = []
 analyzeIDcount = {}
 analysisOptions = {}
+crassd_uuid = ''
+hostname = None
+
+nodeManager = multiprocessing.manager()
+global nodeProperties
+nodeProperties = nodeManager.dict()
 
 def set_procname(newname):
     from ctypes import cdll, byref, create_string_buffer

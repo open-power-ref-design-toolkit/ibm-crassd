@@ -33,6 +33,7 @@ import imp
 import socket
 import telemetryServer
 import traceback
+import uuid
 
 def sigHandler(signum, frame):
     """
@@ -436,7 +437,7 @@ def BMCEventProcessor():
             except Exception as e:
                 exc_type, exc_obj, exc_tb = sys.exc_info()
                 fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-                config.errorLogger(syslog.LOG_DEBUG,"exception: {type} {fname} {lineNo}".format( exc_type, fname, exc_tb.tb_lineno))
+                config.errorLogger(syslog.LOG_DEBUG,"exception: {type} {fname} {lineNo}".format( type=exc_type, fname=fname, lineNo=exc_tb.tb_lineno))
                 config.errorLogger(syslog.LOG_DEBUG, str(e))
             eventsDict.clear()
             
@@ -457,7 +458,28 @@ def loadBMCLastReports():
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
             print ("exception: ", exc_type, fname, exc_tb.tb_lineno)
         try:
+            if 'app_info' in confParser:
+                if 'uuid' in confParser['app_info']:
+                    config.crassd_uuid = confParser['app_info']['uuid']
+                else:
+                    config.crassd_uuid = str(uuid.uuid1())
+                    confParser['app_info']['uuid'] = config.crassd_uuid
+                    with open(config.bmclastreports, 'w') as configfile:
+                        confParser.write(configfile)
+            else:
+                config.crassd_uuid = str(uuid.uuid1())
+                confParser['app_info'] = {}
+                confParser['app_info']['uuid'] = config.crassd_uuid
+                with open(config.bmclastreports, 'w') as configfile:
+                    confParser.write(configfile)
+            if 'statistics' in confParser:
+                for key in dict(confParser['statistics']):
+                    id = key.split('suppressed_')[1].upper()
+                    config.analyzeIDcount[id] = int(confParser['statistics'][key])
             for key in notifyList:
+                if str(key) + '_bmcs' not in confParser:
+                    errorLogger(syslog.LOG_ERR, "No section: "+str(key) +"_bmcs in ini file. All bmc events will be forwarded to entities being notified. ")
+                    continue
                 bmcs = dict(confParser.items(str(key) + '_bmcs'))
                 for node in mynodelist:
                     if node['bmcHostname'] in bmcs:
@@ -465,12 +487,8 @@ def loadBMCLastReports():
                         bmcs[node['bmcHostname']]= json.loads(bmcString)
                         notifyList[key][node['bmcHostname']]['lastLogTime'] = str(bmcs[node['bmcHostname']]['lastLogTime'])
                         notifyList[key][node['bmcHostname']]['dupTimeIDList'] = bmcs[node['bmcHostname']]['dupTimeIDList']
-            if 'statistics' in confParser:
-                for key in dict(confParser['statistics']):
-                    id = key.split('suppressed_')[1].upper()
-                    config.analyzeIDcount[id] = int(confParser['statistics'][key])
         except KeyError:
-            errorLogger(syslog.LOG_ERR, "No section: bmcs in ini file. All bmc events will be forwarded to entities being notified. ")
+            errorLogger(syslog.LOG_ERR, "No section: "+str(key) + "_bmcs in ini file. All bmc events will be forwarded to entities being notified. ")
         except configparser.NoSectionError:
             errorLogger(syslog.LOG_ERR, "No section: "+str(key) +"_bmcs in ini file. All bmc events will be forwarded to entities being notified. ")
 
@@ -550,6 +568,14 @@ def createNodeList(confParser):
         global notificationlistener
         import notificationlistener
     
+    #check the node count to see if nodes were specified
+    if len(mynodelist)<1:
+        #The node list seems short, attempt to scan for nodes that report to this service node
+        autoConfigureNodes(confParser)
+        updateMaxThreads(confParser)
+        errorLogger(syslog.LOG_INFO, "Auto-configuration Node Count: {count}".format(count=len(mynodelist)))
+    
+    
 def isString(var):
     if sys.version_info < (3,0):
         return isinstance(var, basestring)
@@ -580,6 +606,7 @@ def getConfigPaths(forceHostname=False):
     '''
     
     hostname = socket.gethostname().split('.')[0]
+    config.hostname = hostname
     path = os.sep.join(config.configFileName.split('/')[:-1])
     dynamicConfigFile = path + os.sep + hostname + '.' + config.configFileName.split('/')[-1]
     useHostname = False
@@ -631,7 +658,13 @@ def setupNotifications():
     
     #get the nodes to push alerts to
     createNodeList(confParser)
-    
+    return confParser
+
+
+def initPlugins(confParser):
+    '''
+        Initializes the plugins if they have the function
+    '''
     for i in getPlugins():
         config.errorLogger(syslog.LOG_DEBUG,"Loading Plugin " + i["name"])
         plugin = loadPlugins(i)
@@ -645,8 +678,8 @@ def setupNotifications():
             if isString(notifyList[entity]['function']):
                 if hasattr(plugin, notifyList[entity]["function"]):
                     notifyList[entity]["function"] = getattr(plugin, notifyList[entity]["function"])
-    return confParser
-    
+
+ 
 def configurePushNotifications():   
     """
         configures a websocket to listen for push notifications from openbmc. Spawns 1 thread per push notification. 
@@ -658,6 +691,8 @@ def configurePushNotifications():
             node['listener'] = t
             t.daemon = True
             t.start()  
+
+
 def queryAllNodes():
     """
         Queries all nodes to get initial status upon starting up. 
@@ -666,6 +701,7 @@ def queryAllNodes():
         #loads all nodes into the queue for retrieving the current state of the nodes
         nodes2poll.put(node)
         
+
 def getMinimumPollingInterval(numWorkerThreads):
     """
         determines the number of passes that have to be made to process all nodes. Passes are only used for 
@@ -687,7 +723,7 @@ def getMinimumPollingInterval(numWorkerThreads):
     return minPollingInterval
 
 def setDefaultBMCCredentials(node):
-    if ['username'] not in node: 
+    if 'username' not in node: 
         if mynodelist[-1]['accessType'] == "ipmi":
             node ['username'] = "ADMIN"
             node['password'] = "ADMIN"
@@ -748,6 +784,7 @@ def autoConfigureNodes(confParser):
                                    'lastLogTime': '0',
                                    'dupTimeIDList': []})
                 else:
+                    print (nodes2)
                     mynodelist.append({'xcatNodeName': nodes2monitor[node]['xcatNodeName'], 
                                    'bmcHostname': nodes2monitor[node]['bmcHostname'],
                                    'accessType': nodes2monitor[node]['accessType'],
@@ -855,24 +892,9 @@ def initialize():
     #Setup Notifications for entities to push alerts to
     confParser = setupNotifications()
     
-
-    
-    #validate all of the needed plugins loaded
-    validatePluginNotifications(confParser)
     errorLogger(syslog.LOG_INFO, "Node Count: {count}".format(count=len(mynodelist)))
-    #check the node count to see if nodes were specified
-    if len(mynodelist)<1:
-        #The node list seems short, attempt to scan for nodes that report to this service node
-        autoConfigureNodes(confParser)
-        updateMaxThreads(confParser)
-        errorLogger(syslog.LOG_INFO, "Auto-configuration Node Count: {count}".format(count=len(mynodelist)))
-    #Check for analysis scripts
-    getIDstoAnalyze(confParser)
-    #load last reported times from storage file to prevent duplicate entries
-    loadBMCLastReports()
-
-    
-    #Determine the maximum number of nodes
+      
+    #Set the maxThreads variable to 1
     maxThreads = 1
     
     #Enable debug messages if needed
@@ -886,14 +908,32 @@ def initialize():
     except KeyError:
         errorLogger(syslog.LOG_ERR, "No section: base configuration in file ibm-crassd.config. Defaulting to one thread for polling") 
         
-    
+    #Determine the maximum number of threads to use for alerts
     if(maxThreads >= len(mynodelist)):
         maxThreads = len(mynodelist)
 
     if(maxThreads<1): maxThreads=1
     minPollingInterval = getMinimumPollingInterval(maxThreads)
-    #Create the worker threads
+    config.maxThreads = maxThreads
     
+    #load last reported times from storage file to prevent duplicate entries
+    loadBMCLastReports()
+    
+    #load the managed dictionary with node properties
+    for node in config.mynodelist:
+        config.nodeProperties[node['xcatNodeName']] = node.copy()
+    
+    #load the plugins and initialize them
+    initPlugins(confParser)
+    
+    
+    #validate all of the needed plugins loaded
+    validatePluginNotifications(confParser)
+    
+    #Check for analysis scripts
+    getIDstoAnalyze(confParser)
+
+    #Create the worker threads
     for i in range(maxThreads):
         config.errorLogger(syslog.LOG_DEBUG,"Creating thread " + str(i))
 
