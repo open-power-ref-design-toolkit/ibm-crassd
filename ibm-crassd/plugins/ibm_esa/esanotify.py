@@ -29,6 +29,7 @@ import openbmctool
 import subprocess
 import sys
 import os
+import time
 
 
 def checkESAConnection(esaIP, esaPort):
@@ -513,6 +514,7 @@ def waitForNode(node):
         Node must in in CSM Maintenance or OUT_OF_Service states
     '''
     if config.pluginConfigs['esa']['CSMstateMinder']:
+        time.sleep(300)
         #we must wait for the node to be in the Maintenance or OUT_OF_SERVICE states
         #wait for the node state to change
         #we must also check if the node is part of a job
@@ -625,7 +627,7 @@ def primaryMonitoringProcess():
                     #send daily email
                     pass
         except Exception as e:
-            config.errorLogger(syslog.LOG_ERR, "Failed to send the heartbeat to ESA".format(node=endpointInfo['hostname']))
+            config.errorLogger(syslog.LOG_ERR, "Encountered an error in the ESA Plugin primary process.")
             exc_type, exc_obj, exc_tb = sys.exc_info()
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
             config.errorLogger(syslog.LOG_DEBUG, "Exception: Error: {err}, Details: {etype}, {fname}, {lineno}".format(err=e, etype=exc_type, fname=fname, lineno=exc_tb.tb_lineno))
@@ -654,6 +656,7 @@ def initialize():
     config.pluginVars['esa']['nodesToCollectData'] = config.pluginVars['esa']['manager'].list()
     config.pluginVars['esa']['nodesCollectedDataLocations'] = config.pluginVars['esa']['manager'].dict()
     config.pluginVars['esa']['killSig'] = multiprocessing.Event()
+    config.pluginVars['esa']['runDaily'] = multiprocessing.Event()
     
     #Validate connection parameters to ESA
     connected = checkESAConnection(host, port)
