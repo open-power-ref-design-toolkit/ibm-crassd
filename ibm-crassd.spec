@@ -25,10 +25,10 @@ Requires: python3-pexpect
 %endif
 
 %if 0%{?el7}
-Requires: python36
-Requires: python36-requests
+Requires: python3
+Requires: python-requests
 Requires: python-configparser
-Requires: python36-websocket-client
+Requires: python-websocket-client
 Requires: pexpect
 %endif
 
@@ -67,6 +67,7 @@ mkdir -p $RPM_BUILD_ROOT/usr/lib/systemd/system
 mkdir -p $RPM_BUILD_ROOT/usr/lib/systemd/system-preset
 
 %{__make} install
+
 
 %clean
 rm -rf $RPM_BUILD_ROOT
