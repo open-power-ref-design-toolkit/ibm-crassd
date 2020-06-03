@@ -24,7 +24,7 @@ import sys
 import multiprocessing
 
 global crassd_version
-crassd_version = '1.1.7'
+crassd_version = '1.2.0'
 
 global nodes2poll
 nodes2poll = queue.Queue()
@@ -83,7 +83,7 @@ analysisOptions = {}
 crassd_uuid = ''
 hostname = None
 
-nodeManager = multiprocessing.manager()
+nodeManager = multiprocessing.Manager()
 global nodeProperties
 nodeProperties = nodeManager.dict()
 
