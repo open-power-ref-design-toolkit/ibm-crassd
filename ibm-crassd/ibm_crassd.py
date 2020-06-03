@@ -459,7 +459,7 @@ def loadBMCLastReports():
             print ("exception: ", exc_type, fname, exc_tb.tb_lineno)
         try:
             if 'app_info' in confParser:
-                if 'uuid' in confParser['app_info']:
+                if 'uuid' in confParser['app_info'] and confParser['app_info']['uuid'].strip() !='':
                     config.crassd_uuid = confParser['app_info']['uuid']
                 else:
                     config.crassd_uuid = str(uuid.uuid1())
@@ -491,6 +491,23 @@ def loadBMCLastReports():
             errorLogger(syslog.LOG_ERR, "No section: "+str(key) + "_bmcs in ini file. All bmc events will be forwarded to entities being notified. ")
         except configparser.NoSectionError:
             errorLogger(syslog.LOG_ERR, "No section: "+str(key) +"_bmcs in ini file. All bmc events will be forwarded to entities being notified. ")
+
+    else:
+        try:
+            #tracker file doesn't exist. create UUID and write initial tracker file
+            confParser = configparser.ConfigParser()
+            config.crassd_uuid = str(uuid.uuid1())
+            confParser['app_info'] = {}
+            confParser['app_info']['uuid'] = config.crassd_uuid
+            with open(config.bmclastreports, 'w') as configfile:
+                confParser.write(configfile)
+        except Exception as e:
+            config.errorLogger(syslog.LOG_ERR, "Failed to create a new tracker file. Exiting.")
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            config.errorLogger(syslog.LOG_DEBUG, "Exception: Error: {err}, Details: {etype}, {fname}, {lineno}".format(err=e, etype=exc_type, fname=fname, lineno=exc_tb.tb_lineno))
+            traceback.print_tb(e.__traceback__)
+            sys.exit(1)
 
 def getPlugins():
     """
