@@ -1023,6 +1023,7 @@ def socket_server(servsocket):
                         config.nodeProperties[node['xcatNodeName']]['LastUpdateReceived'] = sensorData[node['xcatNodeName']]['LastUpdateReceived']
                         config.nodeProperties[node['xcatNodeName']]['Connected'] = sensorData[node['xcatNodeName']]['Connected']
                         config.nodeProperties[node['xcatNodeName']]['NodeState'] = sensorData[node['xcatNodeName']]['NodeState']
+                syncTime = int(time.time())
         except Exception as e:
             config.errorLogger(syslog.LOG_ERR, "Failed to open a telemetry server connection with a client.")
             exc_type, exc_obj, exc_tb = sys.exc_info()
