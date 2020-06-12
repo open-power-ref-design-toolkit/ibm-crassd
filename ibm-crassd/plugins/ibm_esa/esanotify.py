@@ -30,7 +30,7 @@ import subprocess
 import sys
 import os
 import time
-
+import threading
 
 def checkESAConnection(esaIP, esaPort):
     """
@@ -457,7 +457,7 @@ def monitorThread():
     '''
     while not config.killNow:
         time.sleep(0.5)
-        if not config.pluginVars['esa']['monitoringProcess'].isAlive():
+        if not config.pluginVars['esa']['monitoringProcess'].is_alive():
             #primary subprocess has died. Restart it. 
             monitorProcess = multiprocessing.Process(target=primaryMonitoringProcess(), args=[])
             monitorProcess.daemon = True
@@ -615,7 +615,7 @@ def primaryMonitoringProcess():
                 nodeProps = nodeInfoCollection(node)
                 if nodeProps['esaRegistered']:
                     #registration was successful
-                    config.nodeProperties[node['xcatNodeName']].update(node)
+                    config.updateManagedDict(config.nodeProperties[node['xcatNodeName']], nodeProps)
                 else:
                     #node registration failed again
                     pass
@@ -670,13 +670,12 @@ def initialize():
                 with config.lock:
                     config.mynodelist = updatedNodeList
                 for node in config.mynodelist:
-                    config.nodeProperties[node['xcatNodeName']].update(node)
-            print(config.mynodelist)
-        monitorProcess = multiprocessing.Process(target=primaryMonitoringProcess(), args=[])
+                    config.updateManagedDict(config.nodeProperties[node['xcatNodeName']], node)
+        monitorProcess = multiprocessing.Process(target=primaryMonitoringProcess, args=[])
         monitorProcess.daemon = True
         monitorProcess.start()
         config.pluginVars['esa']['monitoringProcess'] = monitorProcess
-        monThread = threading.thread(target=monitorThread, args=[])
+        monThread = threading.Thread(target=monitorThread, args=[])
         monThread.daemon = True
         monThread.start()
     return connected

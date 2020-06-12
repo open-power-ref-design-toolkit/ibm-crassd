@@ -93,7 +93,7 @@ def openSocket(hostname, username, password):
     websocket.enableTrace(False)
     failedConCount = 0
     for i in range(3):
-        mysession = openbmctool.login(hostname,username, password, True)
+        mysession = openbmctool.login(hostname,username, password, True, allowExpiredPassword=False)
         if not isString(mysession):
             break;
         else:

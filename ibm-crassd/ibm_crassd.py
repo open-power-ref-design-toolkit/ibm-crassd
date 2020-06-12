@@ -226,6 +226,8 @@ def getBMCAlerts(node):
             if eventList.find('{') != -1: #check for valid response
                 eventList = eventList[eventList.index('{'):]
                 eventsDict = json.loads(eventList)
+                if not config.useTelem:
+                    config.nodeProperties[node['xcatNodeName']]['LastUpdateReceived'] = int(time.time())
             else:
                 errorLogger(syslog.LOG_ERR, "An invalid response was received from bmc when requesting alerts for {hostname}".format(hostname=impactednode))
                 eventsDict = {'numAlerts': 0, 'failedPoll': True}
@@ -234,8 +236,9 @@ def getBMCAlerts(node):
             #use java sel parser and ipmitool to get alerts from ipmi node
             eventList = subprocess.check_output(['java', '-jar', '/opt/ibm/ras/lib/crassd.jar', bmcHostname, username, password]).decode('utf-8')
             if eventList.find('{') != -1: #check for valid response
-                eventList = eventList[eventList.index('{'):] #keyboard terminate causing substring not found here
+                eventList = eventList[eventList.index('{'):] 
                 eventsDict = json.loads(eventList)
+                config.nodeProperties[node['xcatNodeName']]['LastUpdateReceived'] = int(time.time())
             else:
                 errorLogger(syslog.LOG_ERR, "An invalid response was received when retrieving bmc alerts from {hostname}. Response Details: {msg}".format(hostname=impactednode, msg=eventList))
                 eventsDict = {'numAlerts': 0, 'failedPoll': True}
@@ -938,7 +941,9 @@ def initialize():
     
     #load the managed dictionary with node properties
     for node in config.mynodelist:
-        config.nodeProperties[node['xcatNodeName']] = node.copy()
+        config.nodeProperties[node['xcatNodeName']] = nodeManager.dict()
+        config.updateManagedDict(config.nodeProperties[node['xcatNodeName']], node)
+        config.nodeProperties[node['xcatNodeName']]['LastUpdateReceived'] = 0
     
     #load the plugins and initialize them
     initPlugins(confParser)
@@ -1012,7 +1017,11 @@ def pollNodes(interval):
                     t.start()  
     
     #check for dead push notification
-    
+    for tempKey in config.nodeProperties.keys():
+        temp = config.nodeProperties[tempKey]
+        print(temp)
+#     print(config.nodeProperties)
+#     print(config.mynodelist)
   
 if __name__ == '__main__':
     """
