@@ -11,60 +11,49 @@
 #    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
-#.ONESHELL:
 JAVAC=/usr/bin/javac
 JAR=/usr/bin/jar
 JAVAH=/usr/bin/javah
 JAVA=/usr/bin/java
 CLASSPATH=./classes
-VER=1.2
-REL=0
+VER=1.1
+REL=5
 PROD=ibm-crassd
 NAME=$(PROD)-$(VER)-$(REL)
 
 # Need to test RPMDIR to see if it is set. Otherwise set it.
-RPMDIR := $(if $(RPMDIR),$(RPMDIR),$(shell pwd)/build/rpm)
+RPMDIR := $(if $(RPMDIR),$(RPMDIR),$(shell pwd)/rpm)
 
 # Need to test DEBDIR to see if it is set. Otherwise set it.
-DEBDIR := $(if $(DEBDIR),$(DEBDIR),$(shell pwd)/build/deb)
-
-#setup the java file directory for building the jar
-JAVADIR= $(shell pwd)/build
-
-CURDIR=$(shell pwd)
+DEBDIR := $(if $(DEBDIR),$(DEBDIR),$(shell pwd)/deb)
 
 default: java jar
-java:	;mkdir -p $(JAVADIR)/classes &&cp -R ipmiSelParser/ $(JAVADIR) && cd $(JAVADIR)&& $(JAVAC) -d  $(JAVADIR)/classes `find . -name *.java`
-clean: ;rm -rf ./build
-jar: java;mkdir -p $(JAVADIR)/lib && cp -R ./ipmiSelParser $(JAVADIR) && cd $(JAVADIR)/classes/ && $(JAR) -cvfe ../lib/crassd.jar ipmiSelParser.ipmiSelParser * ../ipmiSelParser/*.properties ../ipmiSelParser/resources/* 
+java: ;mkdir -p classes && $(JAVAC) -d  ./classes `find . -name *.java`
+clean: ;rm -rf ./classes ./lib
+jar: java;mkdir -p ./lib && cd classes/ && $(JAR) -cvfe ../lib/crassd.jar ipmiSelParser.ipmiSelParser * ../ipmiSelParser/*.properties ../ipmiSelParser/resources/*
 install: java jar
 	mkdir -p $(DESTDIR)/opt/ibm/ras/{lib,etc,bin}
-	cp $(JAVADIR)/lib/* $(DESTDIR)/opt/ibm/ras/lib
+	cp ./lib/* $(DESTDIR)/opt/ibm/ras/lib
 	cp ./ibm-crassd/*.config $(DESTDIR)/opt/ibm/ras/etc
 	rsync -avr --exclude='*FQPSP*' ./ibm-crassd/*.py $(DESTDIR)/opt/ibm/ras/bin
 	cp -R ./ibm-crassd/plugins $(DESTDIR)/opt/ibm/ras/bin
+	mkdir -p $(DESTDIR)/usr/lib/systemd/{system-preset,system}
 	cp ./*.preset $(DESTDIR)/usr/lib/systemd/system-preset
 	cp ./*.service $(DESTDIR)/usr/lib/systemd/system
 
-rpm: java jar
+rpm: clean
 	rm -rf $(RPMDIR)
 	mkdir -p $(RPMDIR)
-	mkdir -p $(RPMDIR)/{BUILD,BUILDROOT,RPMS,SOURCES,SPECS,SRPMS}
-	mkdir -p $(RPMDIR)/BUILDROOT/$(PROD)-$(VER)
-	mkdir -p $(RPMDIR)/BUILDROOT/$(PROD)-$(VER)/usr/lib/systemd/{system,system-preset}
-	#cp -R $(JAVADIR)/lib $(RPMDIR)/BUILDROOT/$(PROD)-$(VER)/
-	make install DESTDIR=$(RPMDIR)/BUILDROOT/$(PROD)-$(VER)
-	cp $(CURDIR)/ibm-crassd.spec $(RPMDIR)/SPECS/
-	cp $(CURDIR)/Makefile $(RPMDIR)/BUILDROOT/$(PROD)-$(VER)/
-	cp -R $(CURDIR)/ipmiSelParser $(CURDIR)/ibm-crassd $(CURDIR)/*.preset $(CURDIR)/*.service $(RPMDIR)/BUILDROOT/$(PROD)-$(VER)/
-	tar -cvzf $(RPMDIR)/SOURCES/$(PROD)-$(VER).tgz -C $(RPMDIR)/BUILDROOT $(PROD)-$(VER)
-	rpmbuild --define '_topdir $(RPMDIR)' --define "_version $(VER)" --define "_release $(REL)" -bb $(RPMDIR)/SPECS/ibm-crassd.spec  
+	for i in BUILD BUILDROOT RPMS SOURCES SPECS SRPMS; do mkdir -p $(RPMDIR)/$$i; done
+	cp ibm-crassd.spec $(RPMDIR)/SPECS/
+	mkdir -p /tmp/ibm-crassd-$(VER)
+	cp -r 85-ibm-crassd.preset  control  docs  errl  examples ibm-crassd  ibm-crassd.service  ipmiSelParser  Makefile  README.md /tmp/ibm-crassd-$(VER)/
+	tar -zcvf $(RPMDIR)/SOURCES/ibm-crassd-$(VER).tgz -C /tmp ibm-crassd-$(VER)
+	rpmbuild --define '_topdir $(RPMDIR)' --define '_version $(VER)' --define '_release $(REL)' -bb ibm-crassd.spec
 
 deb: java jar
 	rm -rf $(DEBDIR)
 	mkdir -p $(DEBDIR)
-	for i in bin lib etc; do mkdir -p $(DEBDIR)/opt/ibm/ras/$$i; done
-	for i in system system-preset; do mkdir -p $(DEBDIR)/usr/lib/systemd/$$i; done
 	make install DESTDIR=$(DEBDIR)
 	mkdir -p $(DEBDIR)/DEBIAN
 	cp control $(DEBDIR)/DEBIAN
