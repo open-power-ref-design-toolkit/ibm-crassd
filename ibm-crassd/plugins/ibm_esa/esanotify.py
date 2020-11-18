@@ -18,6 +18,7 @@ import requests
 import json
 import syslog
 import config
+from config import *
 try:
     import Queue as queue
 except ImportError:
@@ -28,9 +29,14 @@ import multiprocessing
 import openbmctool
 import subprocess
 import sys
-import os
+import os, shutil
 import time
 import threading
+import datetime
+from apscheduler.schedulers.background  import BackgroundScheduler
+from apscheduler.events import *
+import smtplib
+from smtplib import SMTPException
 
 def checkESAConnection(esaIP, esaPort):
     """
@@ -81,7 +87,7 @@ def registerCRASSD(esaIP, esaPort):
                 'vendor': 'IBM'
             }
         ],
-        'EndpointType': 'Service Monitor'
+        'EndpointType': 'ServiceMonitor'
        }
     encodedJSONData = json.dumps(crassdData)
     url = config.pluginVars['esa']['baseurl']+'endpoint/'
@@ -305,7 +311,7 @@ def registerHWEndpoint(esaIP, esaPort, endpointInfo):
             'app.owner': 'CRASSD',
             'product.hardware':[
                 {
-                    'vendor': endpointInfo['Manufacturer'],
+                    'vendor': 'IBM',
                     'description': endpointInfo['PrettyName'],
                     'Model': endpointInfo['Model'].split('-')[1].strip(),
                     'MachineType': endpointInfo['Model'].split('-')[0].strip(), 
@@ -369,6 +375,11 @@ def nodeInfoCollection(anode):
         print('Unsupported BMC access type')
         node['esaRegistered'] = False
         return node
+
+    #Remove the ending dots
+    nodeInfo['Model']=nodeInfo['Model'].replace('.','')
+    nodeInfo['SerialNumber']=nodeInfo['SerialNumber'].replace('.','')
+
     nodeid = registerHWEndpoint(config.pluginVars['esa']['esa_ip'],config.pluginVars['esa']['esa_port'], nodeInfo)
     node['MTM'] = nodeInfo['Model'].strip()
     node['Serial'] = nodeInfo['SerialNumber'].strip()
@@ -391,17 +402,27 @@ def esaHeartbeat():
     
     #generate the list of endpoints for the packet
     esasess = config.pluginVars['esa']['session']
-    endpointList = [{'system.id': crassdID}]
+    endpointList = [{'system.id': config.pluginVars['esa']['crassdID']}]
+    
+ 
     for node in config.mynodelist:
-        connected = nodeProperties[node['xcatNodeName']['Connected']]
-        lastUpdateTime = nodeProperties[node['xcatNodeName']['LastUpdateReceived']]
+        if 'Connected' in config.nodeProperties[node['xcatNodeName']]:
+            connected = config.nodeProperties[node['xcatNodeName']]['Connected']
+        else :
+            connected = None
+        if 'LastUpdateReceived' in config.nodeProperties[node['xcatNodeName']]:
+             lastUpdateTime = config.nodeProperties[node['xcatNodeName']]['LastUpdateReceived']
+        else :
+             lastUpdateTime = None
+       
         if connected is None or lastUpdateTime is None: continue
-        if nodeProperties[node['xcatNodename']]['esaID'] is None:
+        if not config.nodeProperties[node['xcatNodeName']]['esaRegistered']:
             #The node has never been registered with esa
             try:
-                newESAid = nodeInfoCollection(node)
-                if newESAid is not None:
-                    endpointList.append({'system.id': nodeProperties[node['xcatNodename']]['esaID']})
+                newNode = nodeInfoCollection(node)                
+                if newNode['esaRegistered'] :
+                    config.updateManagedDict(config.nodeProperties[node['xcatNodeName']], newNode)  
+                    endpointList.append({'system.id': config.nodeProperties[node['xcatNodeName']]['esaID']})
                 else:
                     continue
             except Exception as e:
@@ -411,24 +432,24 @@ def esaHeartbeat():
                 config.errorLogger(syslog.LOG_DEBUG, "Exception: Error: {err}, Details: {etype}, {fname}, {lineno}".format(err=e, etype=exc_type, fname=fname, lineno=exc_tb.tb_lineno))
                 traceback.print_tb(e.__traceback__)
                 continue
-        if nodeProperties[node['xcatNodeName']['Connected']]:
+        if config.nodeProperties[node['xcatNodeName']]['Connected']:
             #ibm-crassd has an active connection with the system
-            endpointList.append({'system.id': nodeProperties[node['xcatNodename']]['esaID']})
+            endpointList.append({'system.id': config.nodeProperties[node['xcatNodeName']]['esaID']})
         elif (not connected and ((int(time.time())-lastUpdateTime) < 86000)):
             #System has been disconnected less than 24 hours
-            endpointList.append({'system.id': nodeProperties[node['xcatNodename']]['esaID']})
+            endpointList.append({'system.id': config.nodeProperties[node['xcatNodeName']]['esaID']})
         else:
             #system has been disconnected for more than 24 hours
             config.errorLogger(syslog.LOG_INFO, 'Node {nodename} has been disconnected more than 24 hours. No heartbeat was sent to ESA for it.'.format(nodename=node['xcatNodeName']))
             continue
+
     heartbeatPacket = {
-        'app.owner': crassdID,
-        'endpoints': endpointList
+        "endpoints": endpointList
     }
     
-    encodedJSONData = json.dumps(heartbeatPacket)
+    encodedJSONData = json.dumps(heartbeatPacket)   
     try:
-        resp3 = esasess.post(config.pluginVars['esa']['baseurl']+'endpoint/', headers=config.pluginVars['esa']['esa_header'], data=encodedJSONData, verify=False)
+        resp3 = esasess.post(config.pluginVars['esa']['baseurl'] + 'data/hb', headers=config.pluginVars['esa']['esa_header'], data=encodedJSONData, verify=False)
         if resp3.status_code == 200:
             content = resp3.json()
             if content['status']['code'] == 200:
@@ -467,6 +488,7 @@ def monitorThread():
     
     #wait for the subprocess to terminate before exiting the thread
     config.pluginVars['esa']['monitoringProcess'].join()
+    
 
 
 def sendEventToESA(node, event):
@@ -479,7 +501,56 @@ def sendEventToESA(node, event):
         @param event: The event to call home
         @return: True if successful, false if unable to send
     '''
-    return True
+    esasess = config.pluginVars['esa']['session']
+
+    severityMap = {"Critical":"1", "Warning":"2", "Information":"3"}
+    mtm = config.nodeProperties[node]['MTM'].split('-')
+    '''
+    failingUnit = {
+        "Model": mtm[1],
+        "MachineType": mtm[0],
+        "SerialNumber": config.nodeProperties[node]['Serial']
+    }
+    '''
+    origTimeStamp = time.asctime(time.localtime(int(event['timestamp'])))
+
+    eventPacket = {
+        "system.id": config.nodeProperties[node]['esaID'],
+        "error.code": event['CerID'],
+        "resource.name": node,
+        "event.original.timestamp": event['timestamp'],
+        "event.serviceability": "callhome",
+        "event.client.id": "CRASSD",
+        "severity": severityMap.get(event['severity']),
+        "event-description": event['message'],
+        "event-details": event['lengthyDescription']
+        #"failingunit": failingUnit
+    }
+
+    encodedJSONData = json.dumps(eventPacket)
+    try:
+        resp3 = esasess.post(config.pluginVars['esa']['baseurl'] + 'event', headers=config.pluginVars['esa']['esa_header'], data=encodedJSONData, verify=False)
+        if resp3.status_code == 200:
+            content = resp3.json()
+            if content['status']['code'] == 200:
+                return content['event']['event.id']
+            else:
+                config.errorLogger(syslog.LOG_ERR, 'An error occurred trying to send a event to the ESA application')
+                config.errorLogger(syslog.LOG_ERR, 'ESA Application Response: {errorInfo}'.format(errorInfo=content['status']['message']))
+                return None
+        else:
+            config.errorLogger(syslog.LOG_ERR, 'An error occurred when reaching the ESA application REST API')
+            config.errorLogger(syslog.LOG_ERR, 'Error Code {errcode}: {desc}'.format(errcode=resp.status_code, desc=requests.status_codes._codes[resp3.status_code][0]))
+            return None
+    except Exception as e:
+        config.errorLogger(syslog.LOG_ERR, "Failed to send the event to ESA".format(node=endpointInfo['hostname']))
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        config.errorLogger(syslog.LOG_DEBUG, "Exception: Error: {err}, Details: {etype}, {fname}, {lineno}".format(err=e, etype=exc_type, fname=fname, lineno=exc_tb.tb_lineno))
+        traceback.print_tb(e.__traceback__)
+        return None
+
+    return None
     
 
 def nodeReadyForCollection(node):
@@ -535,14 +606,57 @@ def collectNodeData(node):
     '''
     filePath = None
     #Figure out which script to call
-    if 'collectionScript' in config.pluginVars['esa']:
-        if lower(config.pluginVars['esa']['collectionScript'].strip()) == 'default':
+    if 'collectionscript' in config.pluginConfigs['esa']:
+        if config.pluginConfigs['esa']['collectionscript'].strip().lower() == 'default':
             if node['accessType'] == 'openbmcRest':
                 #use /opt/ibm/ras/bin/openbmctool.py collect_service data
-                pass
+                try:
+                    dataBytes = subprocess.check_output([config.pyString, '/opt/ibm/ras/bin/openbmctool.py', '-H', node['bmcHostname'], '-U', node['username'], '-P', node['password'], 'collect_service_data'])
+                    dataList = dataBytes.decode('utf-8').split('\n')
+                    print("Output from openbmctool for bmc: ",node['bmcHostname'],'\n',dataList)
+                    for str in dataList:
+                        if str.startswith('Zip file with all collected data created and stored in:'):
+                            filePath = str.split(':')[1].strip()
+                except subprocess.CalledProcessError as e:
+                    errorContent = e.output.decode('utf-8')
+                    if 'Address lookup' in errorContent:
+                        config.errorLogger(syslog.LOG_ERR, "Failed to connect to the BMC for {node}. Ensure the specified address is correct.".format(node=node['bmcHostname']))
+                    else:
+                        config.errorLogger(syslog.LOG_ERR, "Failed to collect service data from the BMC for {node}.".format(node=node['bmcHostname']))
+                        config.errorLogger(syslog.LOG_DEBUG, errorContent)
+                except Exception as e:
+                    config.errorLogger(syslog.LOG_ERR, "Failed to collect service data from the BMC for {node}.".format(node=node['bmcHostname']))
+                    exc_type, exc_obj, exc_tb = sys.exc_info()
+                    fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                    config.errorLogger(syslog.LOG_DEBUG, "Exception: Error: {err}, Details: {etype}, {fname}, {lineno}".format(err=e, etype=exc_type, fname=fname, lineno=exc_tb.tb_lineno))
+                    traceback.print_tb(e.__traceback__)
             elif node['accessType'] == 'ipmi':
                 #use plc script
-                pass
+                try:
+                    tempoutput = subprocess.check_output([config.pluginConfigs['esa']['plcdirectory'], 
+                                                          '-b', node['bmcHostname'], 
+                                                          '-a', node['password'], 
+                                                          '-d', config.pluginConfigs['esa']['datadirectory']], 
+                                                          stderr=subprocess.STDOUT).decode('utf-8')
+                    for line in tempoutput.split("\n"):
+                        if '-gdp.powerlc.tar' in line:
+                             fileName  = line.split()[len(line.split())-1].strip() + '.gz'
+                             filePath = config.pluginConfigs['esa']['datadirectory']+ '/'+ fileName
+                             print('Original EED filePath-------->',filePath)  #Original EED filePath: the file path generated by plc eed data collection
+                             break  
+                except subprocess.CalledProcessError as e:
+                    errorContent = e.output.decode('utf-8')
+                    if 'Address lookup' in errorContent:
+                        config.errorLogger(syslog.LOG_ERR, "Failed to connect to the BMC for {node}. Ensure the specified address is correct.".format(node=hostIP))
+                    else:
+                        config.errorLogger(syslog.LOG_ERR, "Failed to collect service data from the BMC for {node}.".format(node=nodeIP))
+                        config.errorLogger(syslog.LOG_DEBUG, errorContent)
+                except Exception as e:
+                    config.errorLogger(syslog.LOG_ERR, "Failed to collect service data from the BMC for {node}.".format(node=nodeIP))
+                    exc_type, exc_obj, exc_tb = sys.exc_info()
+                    fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                    config.errorLogger(syslog.LOG_DEBUG, "Exception: Error: {err}, Details: {etype}, {fname}, {lineno}".format(err=e, etype=exc_type, fname=fname, lineno=exc_tb.tb_lineno))
+                    traceback.print_tb(e.__traceback__)
             else:
                 #unsupported type
                 filePath = None
@@ -559,14 +673,7 @@ def collectNodeData(node):
             optionMapper = config.pluginVars['esa']['scriptOptionValues']
             
             ## Try to Run the script!
-    
-    if filePath is not None:
-        if node['xcatNodeName'] not in config.pluginVars['esa']['nodesCollectedDataLocations']:
-            config.pluginVars['esa']['nodesCollectedDataLocations'][node['xcatNodeName']] = []
-        config.pluginVars['esa']['nodesCollectedDataLocations'][node['xcatNodeName']].append(filePath)
-    else:
-        config.pluginVars['esa']['nodesToCollectData'].append(node)
-
+    return filePath 
 
 def sendServiceDatatoESA(node, fileLoc):
     '''
@@ -576,8 +683,49 @@ def sendServiceDatatoESA(node, fileLoc):
         @param fileLoc: The location of the service data in the file system
         @return: True if successful, False if failed
     '''
-    return True
+    esasess = config.pluginVars['esa']['session']
+    result = False
+    if (fileLoc is not None and os.path.isfile(fileLoc)):
+        basefilename = os.path.basename(fileLoc)    
+        if len(config.nodeProperties[node['xcatNodeName']]['eventIDlist'])>0:
+            eventId = config.nodeProperties[node['xcatNodeName']]['eventIDlist'].pop()
+            newFileLoc = config.pluginConfigs['esa']['datadirectory'] + '/' + node['xcatNodeName'] + '/' + eventId + '/'+  basefilename
+            moveFile(fileLoc, newFileLoc)
+            try:
+                headers = {'Content-type': 'multipart/form-data', 'Accept': 'application/json'}
+                files = {'data': (basefilename, open(newFileLoc, 'rb'))}
+                parameters = {
+                        'system.id': config.nodeProperties[node['xcatNodeName']]['esaID'],
+                        'filename': basefilename
+                }
 
+                resp3 = esasess.post(config.pluginVars['esa']['baseurl'] + 'event/' + eventId + '/data', files=files, data=parameters, verify=False)
+                if resp3.status_code == 200:
+                    content = resp3.json()
+                    if content['status']['code'] == 200:
+                        config.errorLogger(syslog.LOG_INFO, 'Success sending the data to ESA for EventID: {eventid}'.format(eventid=eventId))
+                        result = True
+                    else:
+                        config.errorLogger(syslog.LOG_ERR, 'An error occurred trying to send the EED file to the ESA application. EventID: {eventid}'.format(eventid=eventId))
+                        config.errorLogger(syslog.LOG_ERR, 'ESA Application Response: {errorInfo}'.format(errorInfo=content['status']['message']))
+                else:
+                    config.errorLogger(syslog.LOG_ERR, 'An error occurred when reaching the ESA application REST API')
+                    config.errorLogger(syslog.LOG_ERR, 'Error Code {errcode}: {desc}'.format(errcode=resp.status_code, desc=requests.status_codes._codes[resp3.status_code][0]))
+            except Exception as e:
+                config.errorLogger(syslog.LOG_ERR, 'Failed to send the EED file to ESA for EventID: {eventid}'.format(eventid=eventId))
+                exc_type, exc_obj, exc_tb = sys.exc_info()
+                fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                config.errorLogger(syslog.LOG_DEBUG, "Exception: Error: {err}, Details: {etype}, {fname}, {lineno}".format(err=e, etype=exc_type, fname=fname, lineno=exc_tb.tb_lineno))
+                traceback.print_tb(e.__traceback__)
+            os.remove(newFileLoc)
+            os.rmdir(config.pluginConfigs['esa']['datadirectory'] + '/' + node['xcatNodeName'] + '/' + eventId + '/')
+    return result    
+
+def moveFile(srcfile, dstfile):
+    fpath,fname=os.path.split(dstfile)
+    if not os.path.exists(fpath):
+        os.makedirs(fpath)
+    shutil.move(srcfile,dstfile)
 
 def getEventStatus(eventID):
     '''
@@ -593,22 +741,126 @@ def collectionThread(node):
     '''
         This thread handles collecting the service data in the background
     '''
-    waitforNode(node)
-    collectNodeData(node)
+    #don't check the node for now
+    #waitForNode(node)
+    fileLoc = collectNodeData(node)
+    sendServiceDatatoESA(node,fileLoc)
+	    
+def my_listener(event):
+    if event.exception:
+        print('The job executed unsuccessfully :',event.job_id)
+    else:
+        print('The job missed execution :',event.job_id)
+        
+def sendEmail(body):
+    host_name = socket.gethostname()
+    host_ip = socket.gethostbyname(host_name)
+    if host_name == host_ip :
+       sender = 'crassd@localhost.com'
+    else :
+       sender = 'crassd@' + host_name 
+    #receivers = [config.pluginConfigs['esa']['email']]
+    receivers = str(config.pluginConfigs['esa']['email']).split(',')
+    subject = 'Summary of open problems'    
     
+    mail = [
+        "From: %s <%s>" % ('', sender),
+        "To: %s" % ','.join(receivers),   # Convert to a string, separating elements by commas
+        "Subject: %s" % subject,
+        #"Cc: %s" % ','.join(ccers),
+        "",
+        body
+        ]
+    msg = '\n'.join(mail)    
+    try:
+      smtpserver = config.pluginConfigs['esa']['smtpserver']
+      smtpport = config.pluginConfigs['esa']['smtpport']
+      smtpObj = smtplib.SMTP(smtpserver, smtpport)     
+      smtpObj.sendmail(sender, receivers, msg)       
+      print('Successfully sent email')
+    except SMTPException:
+      print('Error: unable to send email')
+      
+def getOpenProblems():
+    esasess= config.pluginVars['esa']['session']
+    baseurl = config.pluginVars['esa']['baseurl']
+    resp = esasess.get(baseurl + 'event/status:open', verify=False)
+    if resp.status_code == 200:
+        jsonData = resp.json()
+        status = jsonData['status']
+        if status['code'] == 200:
+           items = jsonData['items']
+           if items is not None and len(items)>0:
+              jsonStr = json.dumps(items)
+              items = json.loads(jsonStr)
+
+              emailList = []
+              for item in items :
+                  for node in config.mynodelist :
+                       if node['esaRegistered'] and item['System ID'] == node['esaID'] :
+                          emailList.append(item)
+                  if config.pluginVars['esa']['crassdID'] is not None and item['System ID'] == config.pluginVars['esa']['crassdID'] :
+                      emailList.append(item)
+
+              if emailList is not None and len(emailList)>0 :
+                  sendEmail(convertFormat(emailList))
+              else :
+                  print('No open problems')    
+           else :
+              print('No open problems')
+                 
+        else :
+           #print('Unable to get open problems. Code: {code} Message: {message}'.format(code= status['code'], message=status['message']))
+           config.errorLogger(syslog.LOG_ERR, 'Unable to get open problems. Code: {code} Message: {message}'.format(code= status['code'], message=status['message']))       
+    else :
+        config.errorLogger(syslog.LOG_ERR, 'Unable to get open problems')
+
+def convertFormat(items):
+    strDest = '    System name    ' + '    Service Request    '+ '    Status    ' + '    Time of Occurrence    ' + '\n' + '-------------------------------------------------------------------------------------------\n'
+    for item in items :
+         strDest = strDest + '      ' + item['Name'] + '            ' + item['Service Request'] + '            ' + item['Service Request Status'] + '        '+item['Time of Occurrence'] + '\n'
+    return strDest
+
 
 def primaryMonitoringProcess():
     '''
         This is run as a sub process and handles the main work with collecting service data
-        and with daily routines
-    '''
+        and with daily routines       
+    ''' 
+    if config.pluginVars['esa']['runDaily'].is_set():
+        if not 'scheduler' in dir():
+            #Using default MemoryJobStore , default maximum thread count 10 , default job instance 1
+            scheduler = BackgroundScheduler(daemonic=True) 
+            scheduler.add_job(esaHeartbeat, 'cron', day_of_week='*', hour=0, minute=0, second=1, id='esaHeartbeat')
+            scheduler.add_job(getOpenProblems, 'cron', day_of_week='*', hour=0, minute=0, second=1, id='getOpenProblems')
+            #scheduler.add_job(esaHeartbeat, 'interval', seconds=5, id='esaHeartbeat')
+            #scheduler.add_job(task2, 'cron', day_of_week='*', hour=0, minute=0, second=1, id='esaHeartbeat')
+            #scheduler.add_job(task3, 'cron', day_of_week='*', hour=0, minute=0, second=1, id='esaHeartbeat')
+            #EVENT_JOB_MISSED - A job’s execution was missed, EVENT_JOB_ERROR - A job raised an exception during execution
+            scheduler.start()  
+            scheduler.add_listener(my_listener, EVENT_JOB_ERROR | EVENT_JOB_MISSED)
+            jobList=[]
+            jobs = scheduler.get_jobs()
+            if jobs is not None and len(jobs)>0:
+               for job in scheduler.get_jobs():
+                  jobList.append(job.name)
+            config.pluginVars['esa']['runDailyExists']=True
+            config.pluginVars['esa']['runDaily'].clear() 
+          
     while not config.pluginVars['esa']['killSig'].is_set():
         time.sleep(0.5)
-        try:
+        try: 
+            if config.pluginVars['esa']['runDailyExists']:
+                if 'esaHeartbeat' not in jobList:
+                    scheduler.add_job(esaHeartbeat, 'cron', day_of_week='*', hour=0, minute=0, second=1, id='esaHeartbeat') 
+                    jobList.append('esaHeartbeat')  
+                if 'getOpenProblems' not in jobList:
+                    scheduler.add_job(getOpenProblems, 'cron', day_of_week='*', hour=0, minute=0, second=1, id='getOpenProblems') 
+                    jobList.append('getOpenProblems')            
             if len(config.pluginVars['esa']['nodesToCollectData'])>0:
                 node = config.pluginVars['esa']['nodesToCollectData'].pop()
                 t = threading.Thread(target=collectionThread, args=[node])
-                t.daemon(True)
+                t.daemon = True
                 t.start()
             if len(config.pluginVars['esa']['nodesToRegister']) > 0:
                 node = config.pluginVars['esa']['nodesToRegister'].pop()
@@ -619,13 +871,7 @@ def primaryMonitoringProcess():
                 else:
                     #node registration failed again
                     pass
-            if config.pluginVars['esa']['runDaily'].is_set():
-                #it's time to run the daily tasks
-                #Send the ESA heartbeat
-                esaHeartbeat()
-                if config.pluginConfigs['esa']['dailyNotify']:
-                    #send daily email
-                    pass
+
         except Exception as e:
             config.errorLogger(syslog.LOG_ERR, "Encountered an error in the ESA Plugin primary process.")
             exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -664,6 +910,10 @@ def initialize():
     #register systems if esa is reachable, and start monitoring subprocess
     if connected:
         registerCRASSD(host, port)
+        
+        if not config.pluginVars['esa']['runDaily'].is_set():
+            config.pluginVars['esa']['runDaily'].set()
+            
         if config.pluginVars['esa']['crassdID'] is not None:
             with multiprocessing.Pool(min(40, len(config.mynodelist))) as p:
                 updatedNodeList = p.map(nodeInfoCollection, config.mynodelist)
@@ -671,6 +921,8 @@ def initialize():
                     config.mynodelist = updatedNodeList
                 for node in config.mynodelist:
                     config.updateManagedDict(config.nodeProperties[node['xcatNodeName']], node)
+                    config.nodeProperties[node['xcatNodeName']]['eventIDlist'] = config.pluginVars['esa']['manager'].list()
+
         monitorProcess = multiprocessing.Process(target=primaryMonitoringProcess, args=[])
         monitorProcess.daemon = True
         monitorProcess.start()
@@ -678,6 +930,9 @@ def initialize():
         monThread = threading.Thread(target=monitorThread, args=[])
         monThread.daemon = True
         monThread.start()
+        
+
+
     return connected
    
 
@@ -696,12 +951,15 @@ def notifyESA(cerEvent, impactedNode, entityAttr):
                 'data': cerEvent
              }
     #send alert to ESA
-    if nodeProperties[impactedNode['xcatNodeName']['esaRegistered']]: 
+    if config.nodeProperties[impactedNode]['esaRegistered']:
         # Send the alert
-        if config.pluginConfigs['esa']['autoCollection']:
-            config.pluginVars['esa']['nodesToCollectData'].append(impactedNode)
-    
-    #return writeToSocket(config.pluginVars['pluginName']['mySocket'], queDict)
-    return True
+        if config.pluginConfigs['esa']['autocollection']:
+            config.pluginVars['esa']['nodesToCollectData'].append(config.nodeProperties[impactedNode])
+        eventID = sendEventToESA(impactedNode, cerEvent)
+        if eventID is not None:
+            config.nodeProperties[impactedNode]['eventIDlist'].append(eventID)
+            return True
+
+    return False
     
      
