@@ -132,7 +132,7 @@ def getOBMCEndpointInfo(hostIP, nodeIP, nodeUser, nodePass):
             config.errorLogger(syslog.LOG_ERR, "ESA Plugin Failed to get system MTMS: {bmc}. Timed out waiting for the BMC".format(bmc=nodeIP))
             return None
         except Exception as e:
-            config.errorLogger(syslog.LOG_ERR, "Failed to collect firmware info")
+            config.errorLogger(syslog.LOG_ERR, "Failed to collect firmware info: {bmc}".format(bmc=nodeIP))
             exc_type, exc_obj, exc_tb = sys.exc_info()
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
             config.errorLogger(syslog.LOG_DEBUG, "Exception: Error: {err}, Details: {etype}, {fname}, {lineno}".format(err=e, etype=exc_type, fname=fname, lineno=exc_tb.tb_lineno))
@@ -156,7 +156,7 @@ def getOBMCEndpointInfo(hostIP, nodeIP, nodeUser, nodePass):
             config.errorLogger(syslog.LOG_ERR, "ESA Plugin Failed to get system MTMS: {bmc}".format(bmc=nodeIP))
             return None
         except Exception as e:
-            config.errorLogger(syslog.LOG_ERR, "Failed to collect firmware info")
+            config.errorLogger(syslog.LOG_ERR, "Failed to collect firmware info: {bmc}".format(bmc=nodeIP))
             exc_type, exc_obj, exc_tb = sys.exc_info()
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
             config.errorLogger(syslog.LOG_DEBUG, "Exception: Error: {err}, Details: {etype}, {fname}, {lineno}".format(err=e, etype=exc_type, fname=fname, lineno=exc_tb.tb_lineno))
@@ -305,31 +305,31 @@ def registerHWEndpoint(esaIP, esaPort, endpointInfo):
 #    {'AssetTag': 'PRI[Ve87-f34*2841853&&1582154252000]PRI', 'BuildDate': '',
 #      'Cached': False, 'FieldReplaceable': False, 'Manufacturer': '', 
 #      'Model': '8335-GTC        ', 'PartNumber': '', 'Present': True, 'PrettyName': '', 'SerialNumber': '131886a         '}
-    
-    sysData = {
-            'hostname': endpointInfo['hostname'],
-            'app.owner': 'CRASSD',
-            'product.hardware':[
-                {
-                    'vendor': 'IBM',
-                    'description': endpointInfo['PrettyName'],
-                    'Model': endpointInfo['Model'].split('-')[1].strip(),
-                    'MachineType': endpointInfo['Model'].split('-')[0].strip(), 
-                    'SerialNumber': endpointInfo['SerialNumber'].strip(),
-                    'info.about': 'basic'
-                }
-            ],
-            'related-endpoints':[
-                {
-                    'related-by': 'managedBy',
-                    'system.id': config.pluginVars['esa']['crassdID']
-                }
-            ],
-            'firmware.info':"BMC: ibm-v2.3-476-g2d622cb-r33-coral-cfm-0-gb2c03c9 \n HOST: IBM-witherspoon-OP9_v2.0.14_1.2",
-            'EndpointType': 'ServiceProcessor'
-           }
-    encodedJSONData = json.dumps(sysData)
     try:
+        sysData = {
+                'hostname': endpointInfo['hostname'],
+                'app.owner': 'CRASSD',
+                'product.hardware':[
+                    {
+                        'vendor': 'IBM',
+                        'description': endpointInfo['PrettyName'],
+                        'Model': endpointInfo['Model'].split('-')[1].strip(),
+                        'MachineType': endpointInfo['Model'].split('-')[0].strip(), 
+                        'SerialNumber': endpointInfo['SerialNumber'].strip(),
+                        'info.about': 'basic'
+                    }
+                ],
+                'related-endpoints':[
+                    {
+                        'related-by': 'managedBy',
+                        'system.id': config.pluginVars['esa']['crassdID']
+                    }
+                ],
+                'firmware.info':"BMC: ibm-v2.3-476-g2d622cb-r33-coral-cfm-0-gb2c03c9 \n HOST: IBM-witherspoon-OP9_v2.0.14_1.2",
+                'EndpointType': 'ServiceProcessor'
+               }
+        encodedJSONData = json.dumps(sysData)
+
         resp3 = requests.Session().post(config.pluginVars['esa']['baseurl']+'endpoint/', headers=config.pluginVars['esa']['esa_header'], data=encodedJSONData, verify=False)
         if resp3.status_code == 200:
             content = resp3.json()
@@ -376,15 +376,21 @@ def nodeInfoCollection(anode):
         node['esaRegistered'] = False
         return node
 
-    #Remove the ending dots
-    nodeInfo['Model']=nodeInfo['Model'].replace('.','')
-    nodeInfo['SerialNumber']=nodeInfo['SerialNumber'].replace('.','')
-
+    try: 
+        #Remove the ending dots
+        nodeInfo['Model']=nodeInfo['Model'].replace('.','')
+        nodeInfo['SerialNumber']=nodeInfo['SerialNumber'].replace('.','')
+    except Exception as e:
+        config.errorLogger(syslog.LOG_ERR, "ESA Plugin Failed to get system MTMS: {bmc}".format(bmc=node['bmcHostname']))
+        node['esaRegistered'] = False
+        return node
+        
     nodeid = registerHWEndpoint(config.pluginVars['esa']['esa_ip'],config.pluginVars['esa']['esa_port'], nodeInfo)
     node['MTM'] = nodeInfo['Model'].strip()
     node['Serial'] = nodeInfo['SerialNumber'].strip()
     if nodeid is not None:
         node['esaRegistered'] = True
+        config.errorLogger(syslog.LOG_ERR, "Node is Registered in ESA succesfully:{bmc}".format(bmc=node['bmcHostname']))
         node['esaID'] = nodeid
     else:
         node['esaRegistered'] = False
