@@ -909,7 +909,8 @@ def initialize():
     config.pluginVars['esa']['nodesCollectedDataLocations'] = config.pluginVars['esa']['manager'].dict()
     config.pluginVars['esa']['killSig'] = multiprocessing.Event()
     config.pluginVars['esa']['runDaily'] = multiprocessing.Event()
-    
+    config.pluginVars['esa']['lastSentEventTime'] = None
+        
     #Validate connection parameters to ESA
     connected = checkESAConnection(host, port)
     
@@ -959,8 +960,30 @@ def notifyESA(cerEvent, impactedNode, entityAttr):
     #send alert to ESA
     if config.nodeProperties[impactedNode]['esaRegistered']:
         # Send the alert
+############
+        try:
+            lastSentEventTime = config.pluginVars['esa']['lastSentEventTime']
+            temp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            currentTime = datetime.datetime.strptime(temp,"%Y-%m-%d %H:%M:%S")
+            if lastSentEventTime is not None:
+                diff = (currentTime - lastSentEventTime).total_seconds()
+                waitTime = 5 - diff
+                if(waitTime > 0):
+                    config.pluginVars['esa']['lastSentEventTime'] =  currentTime + datetime.timedelta(seconds=waitTime)
+                    time.sleep(waitTime)
+                else:
+                    config.pluginVars['esa']['lastSentEventTime'] =  currentTime    
+            else:
+                config.pluginVars['esa']['lastSentEventTime'] =  currentTime
+        except Exception as e:
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            config.errorLogger(syslog.LOG_ERR, "Exception: Error: {err}, Details: {etype}, {fname}, {lineno}".format(err=e, etype=exc_type, fname=fname, lineno=exc_tb.tb_lineno))
+            traceback.print_tb(e.__traceback__)                    
+############
         if config.pluginConfigs['esa']['autocollection']:
             config.pluginVars['esa']['nodesToCollectData'].append(config.nodeProperties[impactedNode])
+        config.errorLogger(syslog.LOG_ERR, "Sending event to ESA, systemId = {systemId}, errorCode = {errorCode}".format(systemId=config.nodeProperties[impactedNode]['esaID'], errorCode=cerEvent['CerID']))
         eventID = sendEventToESA(impactedNode, cerEvent)
         if eventID is not None:
             config.nodeProperties[impactedNode]['eventIDlist'].append(eventID)
