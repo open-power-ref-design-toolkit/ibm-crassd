@@ -37,24 +37,23 @@ install: java jar
 	cp ./ibm-crassd/*.config $(DESTDIR)/opt/ibm/ras/etc
 	rsync -avr --exclude='*FQPSP*' ./ibm-crassd/*.py $(DESTDIR)/opt/ibm/ras/bin
 	cp -R ./ibm-crassd/plugins $(DESTDIR)/opt/ibm/ras/bin
+	mkdir -p $(DESTDIR)/usr/lib/systemd/{system-preset,system}
 	cp ./*.preset $(DESTDIR)/usr/lib/systemd/system-preset
 	cp ./*.service $(DESTDIR)/usr/lib/systemd/system
 
-rpm: java jar
+rpm: clean
 	rm -rf $(RPMDIR)
 	mkdir -p $(RPMDIR)
 	for i in BUILD BUILDROOT RPMS SOURCES SPECS SRPMS; do mkdir -p $(RPMDIR)/$$i; done
-	for i in bin lib etc; do mkdir -p $(RPMDIR)/BUILDROOT/$(NAME)/opt/ibm/ras/$$i; done
-	for i in system system-preset; do mkdir -p $(RPMDIR)/BUILDROOT/$(NAME)/usr/lib/systemd/$$i; done
-	cp ibm-crassd.spec $(RPMDIR)
-	make install DESTDIR=$(RPMDIR)/BUILDROOT/$(NAME)
-	rpmbuild --define '_topdir $(RPMDIR)' -bb $(RPMDIR)/ibm-crassd.spec
+	cp ibm-crassd.spec $(RPMDIR)/SPECS/
+	mkdir -p /tmp/ibm-crassd-$(VER)
+	cp -r 85-ibm-crassd.preset  control  docs  errl  examples ibm-crassd  ibm-crassd.service  ipmiSelParser  Makefile  README.md /tmp/ibm-crassd-$(VER)/
+	tar -zcvf $(RPMDIR)/SOURCES/ibm-crassd-$(VER).tgz -C /tmp ibm-crassd-$(VER)
+	rpmbuild --define '_topdir $(RPMDIR)' --define '_version $(VER)' --define '_release $(REL)' -bb ibm-crassd.spec
 
 deb: java jar
 	rm -rf $(DEBDIR)
 	mkdir -p $(DEBDIR)
-	for i in bin lib etc; do mkdir -p $(DEBDIR)/opt/ibm/ras/$$i; done
-	for i in system system-preset; do mkdir -p $(DEBDIR)/usr/lib/systemd/$$i; done
 	make install DESTDIR=$(DEBDIR)
 	mkdir -p $(DEBDIR)/DEBIAN
 	cp control $(DEBDIR)/DEBIAN

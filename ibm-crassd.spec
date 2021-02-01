@@ -10,7 +10,8 @@ URL: http://www.ibm.com/
 Source0: %{name}-%{version}.tgz
 BuildArch: noarch
 Prefix: /opt
-BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
+# BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
+BuildRoot: %{_topdir}
 
 BuildRequires: java-devel >= 1.7.0
 
@@ -59,13 +60,6 @@ ate including environmental, reliability, service, and failure data.
 %install
 #rm -rf $RPM_BUILD_ROOT
 export DESTDIR=%{buildroot}
-mkdir -p $DESTDIR/bin
-mkdir -p $DESTDIR/bin/plugins
-mkdir -p $DESTDIR/etc
-mkdir -p $DESTDIR/lib
-mkdir -p $RPM_BUILD_ROOT/usr/lib/systemd/system
-mkdir -p $RPM_BUILD_ROOT/usr/lib/systemd/system-preset
-
 %{__make} install
 
 %clean

@@ -248,10 +248,16 @@ public class ipmiSelParser {
                 else if(line.contains("|")){
                         //Contains normal SEL entries
                         String[] selPieces = formatSEL(line);
-                        String dateTime = selPieces[BmcEvent.DATE_LOC].trim() +" " + selPieces[BmcEvent.TIME_LOC].trim();
-                        DateFormat df = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss");
-                        Date parsedTS = df.parse(dateTime);
-                        String unixTimestamp = Long.toString(parsedTS.getTime()/1000);
+                        String unixTimestamp = "";
+                        if (selPieces[BmcEvent.DATE_LOC].contains("Pre-Init")){
+                        	unixTimestamp = selPieces[BmcEvent.TIME_LOC].trim();
+                        }
+                        else {
+                        	String dateTime = selPieces[BmcEvent.DATE_LOC].trim() +" " + selPieces[BmcEvent.TIME_LOC].trim();
+                        	DateFormat df = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss");
+                            Date parsedTS = df.parse(dateTime);
+                            unixTimestamp = Long.toString(parsedTS.getTime()/1000);
+                        }
                         String mapKey = getMapKey(selPieces, lookupEvents);
                         Map eventAttr = null;
                         eventAttr = (lookupEvents.get(mapKey));

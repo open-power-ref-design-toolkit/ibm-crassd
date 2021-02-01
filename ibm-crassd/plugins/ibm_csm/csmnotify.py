@@ -98,8 +98,11 @@ def notifyCSM(cerEvent, impactedNode, entityAttr):
             eventEntry['kvcsv'] = argString
     else:
         msgID = "bmc.Firmware/SoftwareFailure.FQPSPEM0003G"
+        theMessage = cerEvent['message']
+        if cerEvent['CerID'] in config.pluginPolicies['csmPolicy']:
+            theMessage = config.pluginPolicies['csmPolicy'][cerEvent['CerID']]['Message']
         eventEntry = {'msg_id': msgID, 'location_name':impactedNode, 'time_stamp':time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
-                      "raw_data":(cerEvent['CerID'] + "|| "+config.pluginPolicies['csmPolicy'][cerEvent['CerID']]['Message']+"|| serviceable:"+ cerEvent['serviceable']+ "|| severity: "+ 
+                      "raw_data":(cerEvent['CerID'] + "|| "+theMessage+"|| serviceable:"+ cerEvent['serviceable']+ "|| severity: "+ 
                                   cerEvent['severity'])}
     if("additionalDetails" in cerEvent):
         eventEntry['raw_data'] = eventEntry['raw_data'] + cerEvent['sensor'] + " || " + cerEvent['state'] + " || " + cerEvent['additionalDetails']

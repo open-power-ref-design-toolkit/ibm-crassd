@@ -641,6 +641,10 @@ def startMonitoringProcess(nodeList, mngedNodeList):
     gathererNodeList = nodeList
     global sensorData
     for node in nodeList:
+        node['Connected'] = False
+        node['NodeState'] = False
+        node['down'] = False
+        node['LastUpdateReceived'] = 0
         if node['accessType'] == 'openbmcRest':
             node['LastUpdateReceived'] = int(time.time())
             node['nextConnAttempt'] = int(time.time())+90 #add 90s before first retry attempt to allow all of the subprocesses and threads to start
@@ -655,6 +659,7 @@ def startMonitoringProcess(nodeList, mngedNodeList):
             ws.daemon = True
             node['telemlistener'] = ws
             ws.start() 
+        config.updateManagedDict(config.nodeProperties[node['xcatNodeName']], node)
     pm = threading.Thread(target = processMessages)
     pm.daemon = True
     pm.start()
@@ -673,6 +678,9 @@ def startMonitoringProcess(nodeList, mngedNodeList):
             sendQueue.task_done()
         curTime = time.time()
         for node in nodeList:
+            if node['accessType'] == 'ipmi':
+                #ipmi nodes are only polled and sensor reading isn't supported
+                continue
             if node['telemlistener'] is not None:
                 if not node['telemlistener'].is_alive():
                     node['telemlistener'] = None
@@ -965,6 +973,8 @@ def socket_server(servsocket):
     global serverhostname
     global killSig
     global sensorData
+    global syncTime
+    syncTime = int(time.time())
     for node in config.mynodelist:
         sensorData[node['xcatNodeName']] = {}
         sensorData[node['xcatNodeName']]['LastUpdateReceived'] = None
@@ -1006,6 +1016,14 @@ def socket_server(servsocket):
                     else:
                         s.close()
                         read_list.remove(s)
+            if ((int(time.time())-syncTime) >= 600):
+                # syncronize the connection status for each node
+                for node in config.mynodelist:
+                    if node['accessType'] != 'ipmi':
+                        config.nodeProperties[node['xcatNodeName']]['LastUpdateReceived'] = sensorData[node['xcatNodeName']]['LastUpdateReceived']
+                        config.nodeProperties[node['xcatNodeName']]['Connected'] = sensorData[node['xcatNodeName']]['Connected']
+                        config.nodeProperties[node['xcatNodeName']]['NodeState'] = sensorData[node['xcatNodeName']]['NodeState']
+                syncTime = int(time.time())
         except Exception as e:
             config.errorLogger(syslog.LOG_ERR, "Failed to open a telemetry server connection with a client.")
             exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -1194,8 +1212,10 @@ def main():
     memWatchdogProc.start()
     config.errorLogger(syslog.LOG_INFO, 'Started Telemetry Streaming')
     
+    syncCounter = 0
     while not config.killNow:
         time.sleep(0.5)
+        syncCounter+=1
         try:
             #mngedNodeList is used to hold nodes that need to be polled for new alerts (No push notifications)
             if isinstance(mngedNodeList, str): break

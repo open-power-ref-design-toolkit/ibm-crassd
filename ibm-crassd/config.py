@@ -13,6 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 """
+from ibm_crassd import updateMaxThreads
 try:
     import Queue as queue
 except ImportError:
@@ -21,6 +22,10 @@ import threading
 import syslog
 import sys
 import multiprocessing
+import collections
+
+global crassd_version
+crassd_version = '1.2.0'
 
 global nodes2poll
 nodes2poll = queue.Queue()
@@ -41,6 +46,8 @@ networkErrorList = ['FQPSPIN0000M','FQPSPIN0001M', 'FQPSPIN0002M','FQPSPIN0003M'
 global useTelem
 useTelem = False
 
+global maxThreads
+maxThreads = 1
 global enableDebug
 enableDebug = False
 
@@ -74,6 +81,13 @@ else:
 analyzeIDList = []
 analyzeIDcount = {}
 analysisOptions = {}
+crassd_uuid = ''
+hostname = None
+
+global nodeManager
+nodeManager = multiprocessing.Manager()
+global nodeProperties
+nodeProperties = {}
 
 def set_procname(newname):
     from ctypes import cdll, byref, create_string_buffer
@@ -81,6 +95,25 @@ def set_procname(newname):
     buff = create_string_buffer(len(newname)+1) #Note: One larger than the name (man prctl says that)
     buff.value = newname                 #Null terminated string as it should be
     libc.prctl(15, byref(buff), 0, 0, 0) #Refer to "#define" of "/usr/include/linux/prctl.h" for the misterious value 16 & arg[3..5] are zero as the man page says.
+
+def updateManagedDict(mngedDict, mergeDict):
+    """
+         Used to update a flat merged dictionary and ensure no iterables are present causing an exception
+           
+         @param mngedDict: the managed dictionary to update
+         @param mergeDict: dict, the dictionary containing the values to add/update in the managed dictionary
+    """
+    for key in mergeDict.keys():
+        try:
+            temp = mergeDict[key]
+            if(isinstance(temp, str) 
+               or isinstance(temp, int)
+               or isinstance(temp, bool)
+               or isinstance(temp, float)
+               or temp is None):
+                mngedDict[key] = temp
+        except Exception as e:
+            print(e, key, temp)
 
 def errorLogger(severity, message):
     """
